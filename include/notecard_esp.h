@@ -92,6 +92,12 @@ typedef struct {
 #define NOTECARD_TRACE_DEFAULT false
 #endif
 
+#ifdef CONFIG_NOTECARD_I2C_PULLUP
+#define NOTECARD_I2C_PULLUP_DEFAULT true
+#else
+#define NOTECARD_I2C_PULLUP_DEFAULT false
+#endif
+
 #define NOTECARD_I2C_CONFIG_DEFAULT() {                    \
     .interface = NOTECARD_INTERFACE_I2C,                   \
     .i2c = {                                               \
@@ -100,7 +106,7 @@ typedef struct {
         .scl_pin = CONFIG_NOTECARD_I2C_SCL_PIN,            \
         .frequency = CONFIG_NOTECARD_I2C_FREQUENCY,        \
         .address = CONFIG_NOTECARD_I2C_ADDRESS,            \
-        .internal_pullup = CONFIG_NOTECARD_I2C_PULLUP      \
+        .internal_pullup = NOTECARD_I2C_PULLUP_DEFAULT     \
     },                                                     \
     .enable_trace = NOTECARD_TRACE_DEFAULT                 \
 }
@@ -147,36 +153,6 @@ esp_err_t notecard_deinit(void);
  * @return true if initialized, false otherwise
  */
 bool notecard_is_initialized(void);
-
-// /**
-//  * @brief Perform a JSON transaction with the Notecard
-//  *
-//  * @param request JSON request string
-//  * @param response Pointer to receive JSON response (caller must free)
-//  * @return true on success, false otherwise
-//  */
-// bool notecard_transaction(const char *request, char **response);
-
-// /**
-//  * @brief Send a JSON request without expecting a response
-//  *
-//  * @param request JSON request string
-//  * @return true on success, false otherwise
-//  */
-// bool notecard_request(const char *request);
-
-// High-level convenience functions
-
-// Note: Use note-c library functions directly for Notecard operations:
-// - NoteNewRequest() to create requests
-// - NoteRequest() to send requests without response
-// - NoteRequestResponse() to send requests and get responses
-// - J* functions for JSON manipulation
-//
-// Example usage:
-//   J *req = NoteNewRequest("hub.set");
-//   JAddStringToObject(req, "product", "com.your-company.your-product");
-//   bool success = NoteRequest(req);
 
 /**
  * @brief Enable or disable debug trace output

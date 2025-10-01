@@ -58,21 +58,13 @@ static esp_err_t notecard_hardware_init(void)
 {
     ESP_LOGI(TAG, "Initializing Notecard hardware...");
 
-    // Configure Notecard for I2C communication
+    // Configure Notecard for I2C communication using Kconfig defaults
     notecard_config_t config = NOTECARD_I2C_CONFIG_DEFAULT();
 
-    // ESP32 pin configuration
-    config.i2c.sda_pin = 22;  // ESP32 SDA pin
-    config.i2c.scl_pin = 20;  // ESP32 SCL pin
-    config.i2c.frequency = 100000;  // 100kHz for reliable communication
-    config.i2c.internal_pullup = false;  // External pullups already present on hardware
-
-    // For low-memory platforms, don't turn on internal Notecard logs.
-#ifndef NOTE_C_LOW_MEM
-    config.enable_trace = true;  // Enable debug output
-#else
-#pragma message("INFO: Notecard debug logs disabled. (non-fatal)")
-#endif
+    // Optional: Override specific settings if needed
+    // config.i2c.sda_pin = 22;
+    // config.i2c.scl_pin = 20;
+    // config.i2c.frequency = 100000;
 
     // Initialize Notecard
     esp_err_t ret = notecard_init(&config);
@@ -162,14 +154,12 @@ static void notecard_sensor_task(void *pvParameters)
                     JAddNumberToObject(body, "temp", temperature);
                     JAddNumberToObject(body, "voltage", voltage);
                     JAddNumberToObject(body, "count", eventCounter);
-                    JAddNumberToObject(body, "heap", esp_get_free_heap_size());
-                    JAddStringToObject(body, "interface", "I2C");
                 }
 
                 bool success = NoteRequest(req);
                 if (success) {
-                    ESP_LOGI(TAG, "Sample %d sent: temp=%.2f°C, voltage=%.2fV, heap=%u",
-                             eventCounter, temperature, voltage, esp_get_free_heap_size());
+                    ESP_LOGI(TAG, "Sample %d sent: temp=%.2f°C, voltage=%.2fV",
+                             eventCounter, temperature, voltage);
                 } else {
                     ESP_LOGE(TAG, "Failed to send sample %d", eventCounter);
                 }
@@ -193,7 +183,7 @@ static void notecard_sensor_task(void *pvParameters)
 
 void app_main(void)
 {
-    ESP_LOGI(TAG, "=== ESP-IDF Notecard Basic Usage Example ===");
+    ESP_LOGI(TAG, "=== ESP-IDF Notecard Basic Usage I2C Example ===");
     ESP_LOGI(TAG, "Component version: %s", NOTECARD_ESP_VERSION);
 
     // Print system information
@@ -210,17 +200,20 @@ void app_main(void)
         return;
     }
 
-    // Initialize Notecard hardware
-    esp_err_t ret = notecard_hardware_init();
-    if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "Notecard hardware initialization failed");
-        return;
+    // Initialize Notecard hardware and configure for Notehub
+    // Use mutex to protect note-c global state during initialization
+    esp_err_t ret = ESP_FAIL;
+    if (xSemaphoreTake(notecard_mutex, portMAX_DELAY) == pdTRUE) {
+        ret = notecard_hardware_init();
+        if (ret == ESP_OK) {
+            ret = notecard_configure_hub();
+        }
+        xSemaphoreGive(notecard_mutex);
     }
 
-    // Configure Notecard for Notehub
-    ret = notecard_configure_hub();
     if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "Notecard hub configuration failed");
+        ESP_LOGE(TAG, "Notecard initialization failed");
+        vSemaphoreDelete(notecard_mutex);
         return;
     }
 

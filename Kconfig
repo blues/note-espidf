@@ -130,21 +130,6 @@ menu "Notecard Configuration"
                 Default UART RX buffer size in bytes
     endmenu
 
-    menu "Memory Configuration"
-
-        config NOTECARD_HEAP_CAPS
-            hex "Memory allocation capabilities"
-            default 0x00
-            help
-                Heap capabilities for memory allocation.
-                Default: MALLOC_CAP_DEFAULT (0x00)
-                Options:
-                - MALLOC_CAP_DMA (0x02) - DMA capable memory
-                - MALLOC_CAP_8BIT (0x04) - 8-bit accessible memory
-                - MALLOC_CAP_SPIRAM (0x08) - PSRAM memory
-                - MALLOC_CAP_INTERNAL (0x10) - Internal memory only
-    endmenu
-
     menu "Communication Timeouts"
 
         config NOTECARD_I2C_TIMEOUT_MS

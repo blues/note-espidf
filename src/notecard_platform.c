@@ -3,7 +3,6 @@
 #include "notecard_platform.h"
 #include "esp_log.h"
 #include "esp_timer.h"
-#include "esp_heap_caps.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "driver/i2c_master.h"
@@ -62,10 +61,8 @@ esp_err_t notecard_platform_i2c_init(const notecard_i2c_config_t *config)
     }
 
     g_i2c_initialized = true;
-    ESP_LOGI(TAG, "I2C initialized on port %d (SDA:%d, SCL:%d, freq:%u)",
+    ESP_LOGI(TAG, "I2C initialized on port %d (SDA:%d, SCL:%d, %uHz)",
              config->port, config->sda_pin, config->scl_pin, config->frequency);
-    ESP_LOGI(TAG, "I2C mode: synchronous (blocking), pullups: %s (external assumed present)",
-             config->internal_pullup ? "internal enabled" : "internal disabled");
 
     return ESP_OK;
 }
@@ -95,37 +92,28 @@ bool notecard_platform_i2c_reset(uint16_t device_address)
         return false;
     }
 
-    ESP_LOGD(TAG, "I2C reset for device 0x%02X", device_address);
-
-    // Perform a simple probe to check if device is responding
     esp_err_t ret = i2c_master_probe(g_i2c_bus_handle, device_address, 100);
-
-    if (ret == ESP_OK) {
-        ESP_LOGD(TAG, "I2C device 0x%02X is responding", device_address);
-        return true;
-    } else {
+    if (ret != ESP_OK) {
         ESP_LOGW(TAG, "I2C device 0x%02X not responding: %s", device_address, esp_err_to_name(ret));
         return false;
     }
+
+    return true;
 }
 
 const char *notecard_platform_i2c_transmit(uint16_t device_address, uint8_t *buffer, uint16_t size)
 {
-    ESP_LOGD(TAG, "I2C transmit: addr=0x%02X, size=%u", device_address, size);
-
     if (!g_i2c_initialized || !g_i2c_bus_handle) {
         ESP_LOGE(TAG, "I2C not initialized");
         return "i2c not initialized";
     }
 
     if (!buffer) {
-        ESP_LOGE(TAG, "Buffer is NULL");
         return "null buffer";
     }
 
     // Handle zero-length writes (Data Query operations)
     if (size == 0) {
-        ESP_LOGI(TAG, "I2C TX: Data Query (zero-length write) to addr=0x%02X", device_address);
 
         // Create device configuration for zero-length write
         i2c_device_config_t dev_cfg = {
@@ -141,7 +129,6 @@ const char *notecard_platform_i2c_transmit(uint16_t device_address, uint8_t *buf
             return esp_err_to_name(ret);
         }
 
-        // Send zero-length write (just the I2C address, no data bytes)
         ret = i2c_master_transmit(dev_handle, NULL, 0, I2C_TIMEOUT_MS);
         i2c_master_bus_rm_device(dev_handle);
 
@@ -150,14 +137,8 @@ const char *notecard_platform_i2c_transmit(uint16_t device_address, uint8_t *buf
             return esp_err_to_name(ret);
         }
 
-        ESP_LOGI(TAG, "Zero-length write successful");
         vTaskDelay(pdMS_TO_TICKS(2));
-        return NULL; // Success
-    }
-
-    // Log JSON content if debug enabled
-    if (size > 0 && buffer[0] >= 0x20 && buffer[0] <= 0x7E) {
-        ESP_LOGD(TAG, "JSON TX: %.*s", size, (char*)buffer);
+        return NULL;
     }
 
     // Create device configuration for this transmission
@@ -182,27 +163,19 @@ const char *notecard_platform_i2c_transmit(uint16_t device_address, uint8_t *buf
         return "chunk too large";
     }
 
-    send_buffer[0] = (uint8_t)(size & 0xFF);  // First byte is data length
-    memcpy(&send_buffer[1], buffer, size);    // Copy actual data
-
+    send_buffer[0] = (uint8_t)(size & 0xFF);
+    memcpy(&send_buffer[1], buffer, size);
 
     ret = i2c_master_transmit(dev_handle, send_buffer, size + 1, I2C_TIMEOUT_MS);
-
-    // Remove device handle
     i2c_master_bus_rm_device(dev_handle);
 
     if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "I2C transmit failed to 0x%02X: %s (0x%x)",
-                 device_address, esp_err_to_name(ret), ret);
+        ESP_LOGE(TAG, "I2C transmit failed: %s", esp_err_to_name(ret));
         return esp_err_to_name(ret);
     }
 
-    ESP_LOGD(TAG, "I2C transmitted %u bytes successfully", size);
-
-    // Small delay after transmission for Notecard processing
     vTaskDelay(pdMS_TO_TICKS(2));
-
-    return NULL; // NULL indicates success
+    return NULL;
 }
 
 const char *notecard_platform_i2c_receive(uint16_t device_address, uint8_t *buffer,
@@ -215,8 +188,6 @@ const char *notecard_platform_i2c_receive(uint16_t device_address, uint8_t *buff
 
     // Handle special cases where buffer is NULL or size is 0 (Data Query operation)
     if (!buffer || size == 0) {
-        ESP_LOGD(TAG, "I2C RX: Data Query operation (addr=0x%02X)", device_address);
-
         // Create device configuration
         i2c_device_config_t dev_cfg = {
             .dev_addr_length = I2C_ADDR_BIT_LEN_7,
@@ -231,36 +202,29 @@ const char *notecard_platform_i2c_receive(uint16_t device_address, uint8_t *buff
             return esp_err_to_name(ret);
         }
 
-        // CORRECT Protocol: Send [0, 0] to request available data count (like Zephyr)
-        uint8_t query_request[2] = {0, 0};  // Request format: [0, requested_size]
+        uint8_t query_request[2] = {0, 0};
         ret = i2c_master_transmit(dev_handle, query_request, 2, I2C_TIMEOUT_MS);
         if (ret != ESP_OK) {
             i2c_master_bus_rm_device(dev_handle);
-            ESP_LOGE(TAG, "Failed to send data query request: %s", esp_err_to_name(ret));
+            ESP_LOGE(TAG, "I2C query write failed: %s", esp_err_to_name(ret));
             return "I2C query write failed";
         }
 
-        // Now read the 2-byte response
         uint8_t query_buffer[2];
         ret = i2c_master_receive(dev_handle, query_buffer, 2, I2C_TIMEOUT_MS);
         i2c_master_bus_rm_device(dev_handle);
 
         if (ret != ESP_OK) {
-            ESP_LOGE(TAG, "I2C data query read failed: %s", esp_err_to_name(ret));
+            ESP_LOGE(TAG, "I2C query read failed: %s", esp_err_to_name(ret));
             return "I2C query read failed";
         }
 
-        // Parse the response
-        uint8_t available_bytes = query_buffer[0];
-        ESP_LOGD(TAG, "Data Query result: %u bytes available", available_bytes);
-
         if (available) {
-            *available = available_bytes;
+            *available = query_buffer[0];
         }
 
-        vTaskDelay(pdMS_TO_TICKS(25));  // Protocol timing delay
-
-        return NULL; // Success
+        vTaskDelay(pdMS_TO_TICKS(25));
+        return NULL;
     }
 
     // Create device configuration for this transmission
@@ -277,21 +241,16 @@ const char *notecard_platform_i2c_receive(uint16_t device_address, uint8_t *buff
         return esp_err_to_name(ret);
     }
 
-    // CORRECT Protocol (like Zephyr): Send read request first, then read response
-    ESP_LOGD(TAG, "I2C RX: Reading %u bytes from addr=0x%02X", size, device_address);
-
-    // Step 1: Send read request [0, requested_size] (following Zephyr example)
+    // Send read request [0, requested_size]
     uint8_t read_request[2] = {0, (uint8_t)(size & 0xFF)};
     ret = i2c_master_transmit(dev_handle, read_request, 2, I2C_TIMEOUT_MS);
     if (ret != ESP_OK) {
         i2c_master_bus_rm_device(dev_handle);
-        ESP_LOGE(TAG, "Failed to send read request: %s", esp_err_to_name(ret));
+        ESP_LOGE(TAG, "I2C read request failed: %s", esp_err_to_name(ret));
         return "I2C read request failed";
     }
 
-    ESP_LOGD(TAG, "Read request sent: [0, %u]", size);
-
-    // Step 2: Read response [available_bytes, good_bytes, data...]
+    // Read response [available_bytes, good_bytes, data...]
     uint16_t response_size = size + 2;  // 2-byte header + requested data
     uint8_t receive_buffer[256];
 
@@ -301,11 +260,9 @@ const char *notecard_platform_i2c_receive(uint16_t device_address, uint8_t *buff
         return "read buffer overflow";
     }
 
-    vTaskDelay(pdMS_TO_TICKS(25));  // Protocol timing delay
+    vTaskDelay(pdMS_TO_TICKS(25));
 
     ret = i2c_master_receive(dev_handle, receive_buffer, response_size, I2C_TIMEOUT_MS);
-
-    // Remove device handle
     i2c_master_bus_rm_device(dev_handle);
 
     if (ret != ESP_OK) {
@@ -314,49 +271,20 @@ const char *notecard_platform_i2c_receive(uint16_t device_address, uint8_t *buff
     }
 
     // Parse Notecard protocol response: [available_bytes, good_bytes, data...]
-    uint8_t available_bytes = receive_buffer[0];
     uint8_t good_bytes = receive_buffer[1];
-
-    ESP_LOGD(TAG, "I2C RX: addr=0x%02X, requested=%u, available=%u, good=%u",
-             device_address, size, available_bytes, good_bytes);
-    ESP_LOG_BUFFER_HEXDUMP(TAG, receive_buffer, response_size, ESP_LOG_DEBUG);
-
-    // Calculate how much actual data we got (subtract 2-byte header)
-    uint16_t actual_data_bytes = (response_size >= 2) ? response_size - 2 : 0;
-
-    ESP_LOGD(TAG, "Protocol validation: good_bytes=%u, actual_data=%u, buffer_size=%u",
-             good_bytes, actual_data_bytes, size);
-
-    // Validate the response
-    if (good_bytes != actual_data_bytes) {
-        ESP_LOGW(TAG, "I2C receive: protocol mismatch - good_bytes=%u, expected=%u",
-                 good_bytes, actual_data_bytes);
-        // This might be OK in some cases, continue with what we got
-    }
 
     // Copy the actual data (skip the 2-byte header)
     if (good_bytes > 0 && buffer && size > 0) {
         uint16_t copy_size = (good_bytes < size) ? good_bytes : size;
         memcpy(buffer, &receive_buffer[2], copy_size);
-        ESP_LOGD(TAG, "Copied %u bytes of data to buffer", copy_size);
-
-        // Log JSON response if it looks like text
-        if (copy_size > 0 && receive_buffer[2] >= 0x20 && receive_buffer[2] <= 0x7E) {
-            ESP_LOGD(TAG, "JSON RX: %.*s", copy_size, (char*)&receive_buffer[2]);
-        }
     }
 
-    // Return the number of additional bytes available for next read
     if (available) {
-        *available = available_bytes;
+        *available = receive_buffer[0];
     }
 
-    ESP_LOGD(TAG, "I2C received %u bytes from 0x%02X successfully", good_bytes, device_address);
-
-    // Small delay after receive for Notecard processing
     vTaskDelay(pdMS_TO_TICKS(2));
-
-    return NULL; // Success
+    return NULL;
 }
 
 //=============================================================================
@@ -374,10 +302,8 @@ esp_err_t notecard_platform_uart_init(const notecard_uart_config_t *config)
         return ESP_ERR_INVALID_ARG;
     }
 
-    // Store configuration
     memcpy(&g_uart_config, config, sizeof(notecard_uart_config_t));
 
-    // Configure UART parameters
     uart_config_t uart_conf = {
         .baud_rate = config->baudrate,
         .data_bits = UART_DATA_8_BITS,
@@ -394,7 +320,6 @@ esp_err_t notecard_platform_uart_init(const notecard_uart_config_t *config)
         return ret;
     }
 
-    // Set UART pins
     ret = uart_set_pin(config->port, config->tx_pin, config->rx_pin,
                        config->rts_pin, config->cts_pin);
     if (ret != ESP_OK) {
@@ -402,7 +327,6 @@ esp_err_t notecard_platform_uart_init(const notecard_uart_config_t *config)
         return ret;
     }
 
-    // Install UART driver with buffers
     ret = uart_driver_install(config->port, config->rx_buffer_size,
                              config->tx_buffer_size, 0, NULL, 0);
     if (ret != ESP_OK) {
@@ -447,7 +371,6 @@ bool notecard_platform_uart_reset(void)
         return false;
     }
 
-    ESP_LOGD(TAG, "UART reset completed");
     return true;
 }
 
@@ -468,11 +391,8 @@ void notecard_platform_uart_transmit(uint8_t *buffer, size_t size, bool flush)
         esp_err_t ret = uart_wait_tx_done(g_uart_config.port, pdMS_TO_TICKS(UART_TIMEOUT_MS));
         if (ret != ESP_OK) {
             ESP_LOGW(TAG, "UART flush timeout: %s", esp_err_to_name(ret));
-            // Don't return error here, data was still written
         }
     }
-
-    ESP_LOGD(TAG, "UART transmitted %zu bytes%s", size, flush ? " (flushed)" : "");
 }
 
 bool notecard_platform_uart_available(void)
@@ -528,22 +448,14 @@ void notecard_platform_delay(uint32_t ms)
 
 void *notecard_platform_malloc(size_t size)
 {
-    // Use configured heap capabilities from Kconfig
-    void *ptr = heap_caps_malloc(size, CONFIG_NOTECARD_HEAP_CAPS);
-
+    void *ptr = malloc(size);
     if (!ptr && size > 0) {
         ESP_LOGE(TAG, "Failed to allocate %zu bytes", size);
-    } else if (ptr) {
-        ESP_LOGD(TAG, "Allocated %zu bytes at %p", size, ptr);
     }
-
     return ptr;
 }
 
 void notecard_platform_free(void *ptr)
 {
-    if (ptr) {
-        ESP_LOGD(TAG, "Freeing memory at %p", ptr);
-        heap_caps_free(ptr);
-    }
+    free(ptr);
 }

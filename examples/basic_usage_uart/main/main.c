@@ -32,11 +32,10 @@
 
 static const char *TAG = "notecard_uart";
 
-#define PRODUCT_UID "com.blues.abucknall:cygnettest"
+#define PRODUCT_UID "com.my-company.my-name:my-project"
 
-// This is the unique Product Identifier for your device
 #ifndef PRODUCT_UID
-#define PRODUCT_UID "com.my-company.my-name:my-project" // "com.my-company.my-name:my-project"
+#define PRODUCT_UID "" // "com.my-company.my-name:my-project"
 #pragma message "PRODUCT_UID is not defined in this example. Please ensure your Notecard has a product identifier set before running this example or define it in code here. More details at https://dev.blues.io/tools-and-sdks/samples/product-uid"
 #endif
 
@@ -55,25 +54,15 @@ static esp_err_t notecard_hardware_init(void)
 {
     ESP_LOGI(TAG, "Initializing Notecard hardware...");
 
-    // Configure Notecard for UART communication
+    // Configure Notecard for UART communication using Kconfig defaults
     notecard_config_t config = NOTECARD_UART_CONFIG_DEFAULT();
 
-    // ESP32 UART pin configuration
-    config.uart.port = UART_NUM_1;
-    config.uart.tx_pin = 17;        // ESP32 TX pin
-    config.uart.rx_pin = 16;        // ESP32 RX pin
-    config.uart.baudrate = 9600;    // Standard Notecard baudrate
-    config.uart.tx_buffer_size = 1024;
-    config.uart.rx_buffer_size = 2048;  // Larger RX buffer for JSON responses
-    config.uart.rts_pin = UART_PIN_NO_CHANGE;  // No hardware flow control
-    config.uart.cts_pin = UART_PIN_NO_CHANGE;
-
-    // For low-memory platforms, don't turn on internal Notecard logs.
-#ifndef NOTE_C_LOW_MEM
-    config.enable_trace = true;  // Enable debug output
-#else
-#pragma message("INFO: Notecard debug logs disabled. (non-fatal)")
-#endif
+    // Optional: Override specific settings if needed
+    // config.uart.tx_pin = 17;
+    // config.uart.rx_pin = 16;
+    // config.uart.baudrate = 9600;
+    // config.uart.tx_buffer_size = 1024;
+    // config.uart.rx_buffer_size = 1024;
 
     // Initialize Notecard
     esp_err_t ret = notecard_init(&config);
@@ -163,14 +152,12 @@ static void notecard_sensor_task(void *pvParameters)
                     JAddNumberToObject(body, "temp", temperature);
                     JAddNumberToObject(body, "voltage", voltage);
                     JAddNumberToObject(body, "count", eventCounter);
-                    JAddNumberToObject(body, "heap", esp_get_free_heap_size());
-                    JAddStringToObject(body, "interface", "UART");
                 }
 
                 bool success = NoteRequest(req);
                 if (success) {
-                    ESP_LOGI(TAG, "Sample %d sent: temp=%.2f°C, voltage=%.2fV, heap=%u",
-                             eventCounter, temperature, voltage, esp_get_free_heap_size());
+                    ESP_LOGI(TAG, "Sample %d sent: temp=%.2f°C, voltage=%.2fV",
+                             eventCounter, temperature, voltage);
                 } else {
                     ESP_LOGE(TAG, "Failed to send sample %d", eventCounter);
                 }
@@ -211,17 +198,20 @@ void app_main(void)
         return;
     }
 
-    // Initialize Notecard hardware
-    esp_err_t ret = notecard_hardware_init();
-    if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "Notecard hardware initialization failed");
-        return;
+    // Initialize Notecard hardware and configure for Notehub
+    // Use mutex to protect note-c global state during initialization
+    esp_err_t ret = ESP_FAIL;
+    if (xSemaphoreTake(notecard_mutex, portMAX_DELAY) == pdTRUE) {
+        ret = notecard_hardware_init();
+        if (ret == ESP_OK) {
+            ret = notecard_configure_hub();
+        }
+        xSemaphoreGive(notecard_mutex);
     }
 
-    // Configure Notecard for Notehub
-    ret = notecard_configure_hub();
     if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "Notecard hub configuration failed");
+        ESP_LOGE(TAG, "Notecard initialization failed");
+        vSemaphoreDelete(notecard_mutex);
         return;
     }
 
