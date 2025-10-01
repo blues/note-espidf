@@ -1,0 +1,68 @@
+# ESP-IDF Notecard Component
+
+An ESP-IDF component for integrating Espressif devices with the Blues [Notecard](https://blues.com/products/notecard/).
+
+## Installation
+
+```bash
+idf.py add-dependency "blues/note-espidf"
+```
+
+## Usage
+
+### I2C Example
+
+```c
+#include "notecard_esp.h"
+
+void app_main(void) {
+    // Initialize with default I2C configuration
+    notecard_config_t config = NOTECARD_I2C_CONFIG_DEFAULT();
+    ESP_ERROR_CHECK(notecard_init(&config));
+
+    // Send a request using note-c API
+    J *req = NoteNewRequest("hub.set");
+    JAddStringToObject(req, "product", "com.your-company:your-product");
+    JAddStringToObject(req, "mode", "continuous");
+    if (!NoteRequest(req)) {
+        ESP_LOGE("app", "hub.set failed");
+    }
+}
+```
+
+### UART Example
+
+```c
+#include "notecard_esp.h"
+
+void app_main(void) {
+    // Initialize with default UART configuration
+    notecard_config_t config = NOTECARD_UART_CONFIG_DEFAULT();
+    ESP_ERROR_CHECK(notecard_init(&config));
+
+    // Send a request using note-c API
+    J *req = NoteNewRequest("card.version");
+    J *rsp = NoteRequestResponse(req);
+    if (rsp) {
+        ESP_LOGI("app", "Notecard version: %s", JGetString(rsp, "version"));
+        NoteDeleteResponse(rsp);
+    }
+}
+```
+
+## Configuration
+
+The component can be configured via menuconfig.
+
+```bash
+idf.py menuconfig
+Component config  --->  Notecard Configuration
+```
+
+## Examples
+
+For examples, see the [examples](examples) directory.
+
+## Documentation
+
+For more information, visit [Blues Developer Documentation](https://dev.blues.io/).

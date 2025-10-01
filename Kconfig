@@ -1,0 +1,166 @@
+# Kconfig for ESP-IDF Component Registry
+
+menu "Notecard Configuration"
+
+    config NOTECARD_ENABLE_TRACE
+        bool "Enable debug trace output"
+        default n
+        help
+            Enable debug trace output from the Notecard component.
+            This will log all communication between the ESP32 and Notecard.
+
+    config NOTECARD_LOW_MEMORY
+        bool "Enable low memory mode"
+        default n
+        help
+            Enable low memory mode for the Notecard component.
+            This reduces memory usage by disabling some features including:
+            - Extended error messages
+            - Debug logging capabilities
+            Enable this on memory-constrained devices.
+
+    choice NOTECARD_DEFAULT_INTERFACE
+        prompt "Default communication interface"
+        default NOTECARD_DEFAULT_I2C
+        help
+            Select the default communication interface for the Notecard.
+            This only affects the default configuration macros.
+
+        config NOTECARD_DEFAULT_I2C
+            bool "I2C"
+            help
+                Use I2C as the default interface
+
+        config NOTECARD_DEFAULT_UART
+            bool "UART"
+            help
+                Use UART as the default interface
+    endchoice
+
+    menu "Default I2C Configuration"
+
+        config NOTECARD_I2C_SDA_PIN
+            int "Default SDA Pin"
+            default 22
+            range 0 48
+            help
+                Default GPIO pin for I2C SDA line
+
+        config NOTECARD_I2C_SCL_PIN
+            int "Default SCL Pin"
+            default 20
+            range 0 48
+            help
+                Default GPIO pin for I2C SCL line
+
+        config NOTECARD_I2C_FREQUENCY
+            int "Default I2C Frequency (Hz)"
+            default 100000
+            range 100000 1000000
+            help
+                Default I2C clock frequency in Hz
+                Standard frequencies: 100000 (100kHz), 400000 (400kHz)
+
+        config NOTECARD_I2C_PORT
+            int "Default I2C Port"
+            default 0
+            range 0 1
+            help
+                Default I2C port number (0 or 1)
+
+        config NOTECARD_I2C_ADDRESS
+            hex "Default Notecard I2C Address"
+            default 0x17
+            range 0x08 0x77
+            help
+                Default I2C address for the Notecard (7-bit address)
+
+        config NOTECARD_I2C_PULLUP
+            bool "Enable internal pull-up resistors"
+            default n
+            help
+                Enable internal pull-up resistors for I2C lines.
+                Disable this if you have external pull-up resistors.
+    endmenu
+
+    menu "Default UART Configuration"
+
+        config NOTECARD_UART_TX_PIN
+            int "Default TX Pin"
+            default 17
+            range 0 48
+            help
+                Default GPIO pin for UART TX line
+
+        config NOTECARD_UART_RX_PIN
+            int "Default RX Pin"
+            default 16
+            range 0 48
+            help
+                Default GPIO pin for UART RX line
+
+        config NOTECARD_UART_BAUDRATE
+            int "Default UART Baudrate"
+            default 9600
+            range 9600 921600
+            help
+                Default UART communication speed in baud
+                Common rates: 9600, 19200, 38400, 57600, 115200
+
+        config NOTECARD_UART_PORT
+            int "Default UART Port"
+            default 1
+            range 0 2
+            help
+                Default UART port number
+                ESP32: 0-2, ESP32-S2: 0-1, ESP32-C3: 0-1
+
+        config NOTECARD_UART_TX_BUFFER
+            int "Default TX Buffer Size"
+            default 1024
+            range 256 4096
+            help
+                Default UART TX buffer size in bytes
+
+        config NOTECARD_UART_RX_BUFFER
+            int "Default RX Buffer Size"
+            default 1024
+            range 256 4096
+            help
+                Default UART RX buffer size in bytes
+    endmenu
+
+    menu "Memory Configuration"
+
+        config NOTECARD_HEAP_CAPS
+            hex "Memory allocation capabilities"
+            default 0x00
+            help
+                Heap capabilities for memory allocation.
+                Default: MALLOC_CAP_DEFAULT (0x00)
+                Options:
+                - MALLOC_CAP_DMA (0x02) - DMA capable memory
+                - MALLOC_CAP_8BIT (0x04) - 8-bit accessible memory
+                - MALLOC_CAP_SPIRAM (0x08) - PSRAM memory
+                - MALLOC_CAP_INTERNAL (0x10) - Internal memory only
+    endmenu
+
+    menu "Communication Timeouts"
+
+        config NOTECARD_I2C_TIMEOUT_MS
+            int "I2C transaction timeout (ms)"
+            default 1000
+            range 100 10000
+            help
+                Timeout for I2C read/write operations in milliseconds
+
+        config NOTECARD_UART_TIMEOUT_MS
+            int "UART transaction timeout (ms)"
+            default 1000
+            range 100 10000
+            help
+                Timeout for UART read/write operations in milliseconds
+
+    endmenu
+
+endmenu

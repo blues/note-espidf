@@ -1,0 +1,20 @@
+# ESP-IDF specific
+build/
+sdkconfig
+sdkconfig.old
+CMakeCache.txt
+CMakeFiles/
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# submodules
+note-c/
