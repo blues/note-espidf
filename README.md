@@ -63,6 +63,15 @@ Component config  --->  Notecard Configuration
 
 For examples, see the [examples](examples) directory.
 
+Examples are designed to run on:
+
+- [Adafruit ESP32 Feather V2](https://learn.adafruit.com/adafruit-esp32-feather-v2?view=all)
+- [Notecard](https://blues.com/products/notecard/)
+- [Notecarrier F](https://blues.com/products/notecarrier/notecarrier-f/)
+
+If you wish to use a different MCU board, you will need to adjust the GPIO pins used for the Notecard.
+See the Kconfig file for the default GPIO pins.
+
 ## Documentation
 
 For more information, visit [Blues Developer Documentation](https://dev.blues.io/).
