@@ -43,7 +43,7 @@ esp_err_t notecard_init(const notecard_config_t *config)
         ret = notecard_platform_i2c_init(&config->i2c);
         if (ret != ESP_OK) {
             ESP_LOGE(TAG, "Failed to initialize I2C interface: %s", esp_err_to_name(ret));
-            goto cleanup;
+            return ret;
         }
 
         // Configure note-c for I2C
@@ -56,7 +56,7 @@ esp_err_t notecard_init(const notecard_config_t *config)
         ret = notecard_platform_uart_init(&config->uart);
         if (ret != ESP_OK) {
             ESP_LOGE(TAG, "Failed to initialize UART interface: %s", esp_err_to_name(ret));
-            goto cleanup;
+            return ret;
         }
 
         // Configure note-c for UART
@@ -68,7 +68,7 @@ esp_err_t notecard_init(const notecard_config_t *config)
     else {
         ESP_LOGE(TAG, "Invalid interface type: %d", config->interface);
         ret = ESP_ERR_INVALID_ARG;
-        goto cleanup;
+        return ret;
     }
 
     // Set up note-c platform functions
@@ -92,9 +92,6 @@ esp_err_t notecard_init(const notecard_config_t *config)
              config->interface == NOTECARD_INTERFACE_I2C ? "I2C" : "UART");
 
     return ESP_OK;
-
-cleanup:
-    return ret;
 }
 
 esp_err_t notecard_deinit(void)
