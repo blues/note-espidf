@@ -87,14 +87,14 @@ menu "Notecard Configuration"
 
         config NOTECARD_UART_TX_PIN
             int "Default TX Pin"
-            default 17
+            default 8
             range 0 48
             help
                 Default GPIO pin for UART TX line
 
         config NOTECARD_UART_RX_PIN
             int "Default RX Pin"
-            default 16
+            default 7
             range 0 48
             help
                 Default GPIO pin for UART RX line
