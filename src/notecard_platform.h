@@ -1,5 +1,3 @@
-// src/notecard_platform.h
-
 #ifndef NOTECARD_PLATFORM_H
 #define NOTECARD_PLATFORM_H
 

@@ -1,4 +1,4 @@
-# examples/basic_usage/CMakeLists.txt
+# examples/basic_usage_i2c/CMakeLists.txt
 
 cmake_minimum_required(VERSION 3.16)
 
@@ -6,4 +6,4 @@ cmake_minimum_required(VERSION 3.16)
 set(EXTRA_COMPONENT_DIRS ../..)
 
 include($ENV{IDF_PATH}/tools/cmake/project.cmake)
-project(notecard_basic_example)
+project(notecard_basic_i2c_example)

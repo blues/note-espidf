@@ -1,5 +1,3 @@
-// include/notecard_esp.h
-
 #ifndef NOTECARD_ESP_H
 #define NOTECARD_ESP_H
 

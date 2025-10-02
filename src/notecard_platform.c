@@ -1,5 +1,3 @@
-// src/notecard_platform.c
-
 #include "notecard_platform.h"
 #include "esp_log.h"
 #include "esp_timer.h"

@@ -1,4 +1,4 @@
-# examples/uart_usage/CMakeLists.txt
+# examples/basic_usage_uart/CMakeLists.txt
 
 cmake_minimum_required(VERSION 3.16)
 
@@ -6,4 +6,4 @@ cmake_minimum_required(VERSION 3.16)
 set(EXTRA_COMPONENT_DIRS ../..)
 
 include($ENV{IDF_PATH}/tools/cmake/project.cmake)
-project(notecard_uart_example)
+project(notecard_basic_uart_example)
