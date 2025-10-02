@@ -110,33 +110,9 @@ const char *notecard_platform_i2c_transmit(uint16_t device_address, uint8_t *buf
         return "null buffer";
     }
 
-    // Handle zero-length writes (Data Query operations)
-    if (size == 0) {
-
-        // Create device configuration for zero-length write
-        i2c_device_config_t dev_cfg = {
-            .dev_addr_length = I2C_ADDR_BIT_LEN_7,
-            .device_address = device_address,
-            .scl_speed_hz = g_i2c_config.frequency,
-        };
-
-        i2c_master_dev_handle_t dev_handle;
-        esp_err_t ret = i2c_master_bus_add_device(g_i2c_bus_handle, &dev_cfg, &dev_handle);
-        if (ret != ESP_OK) {
-            ESP_LOGE(TAG, "Failed to add I2C device for data query: %s", esp_err_to_name(ret));
-            return esp_err_to_name(ret);
-        }
-
-        ret = i2c_master_transmit(dev_handle, NULL, 0, I2C_TIMEOUT_MS);
-        i2c_master_bus_rm_device(dev_handle);
-
-        if (ret != ESP_OK) {
-            ESP_LOGE(TAG, "I2C zero-length write failed: %s", esp_err_to_name(ret));
-            return esp_err_to_name(ret);
-        }
-
-        vTaskDelay(pdMS_TO_TICKS(2));
-        return NULL;
+    if (size > 255) {
+        ESP_LOGE(TAG, "Data size %u exceeds maximum chunk size 255", size);
+        return "chunk too large";
     }
 
     // Create device configuration for this transmission
@@ -154,13 +130,7 @@ const char *notecard_platform_i2c_transmit(uint16_t device_address, uint8_t *buf
     }
 
     // Notecard Serial-over-I2C protocol: prepend size byte to data
-    uint8_t send_buffer[256];  // Max size for Notecard chunks
-    if (size > 255) {
-        ESP_LOGE(TAG, "Data size %u exceeds maximum chunk size 255", size);
-        i2c_master_bus_rm_device(dev_handle);
-        return "chunk too large";
-    }
-
+    uint8_t send_buffer[size + 1];
     send_buffer[0] = (uint8_t)(size & 0xFF);
     memcpy(&send_buffer[1], buffer, size);
 
@@ -184,47 +154,6 @@ const char *notecard_platform_i2c_receive(uint16_t device_address, uint8_t *buff
         return "I2C not initialized";
     }
 
-    // Handle special cases where buffer is NULL or size is 0 (Data Query operation)
-    if (!buffer || size == 0) {
-        // Create device configuration
-        i2c_device_config_t dev_cfg = {
-            .dev_addr_length = I2C_ADDR_BIT_LEN_7,
-            .device_address = device_address,
-            .scl_speed_hz = g_i2c_config.frequency,
-        };
-
-        i2c_master_dev_handle_t dev_handle;
-        esp_err_t ret = i2c_master_bus_add_device(g_i2c_bus_handle, &dev_cfg, &dev_handle);
-        if (ret != ESP_OK) {
-            ESP_LOGE(TAG, "Failed to add I2C device for data query: %s", esp_err_to_name(ret));
-            return esp_err_to_name(ret);
-        }
-
-        uint8_t query_request[2] = {0, 0};
-        ret = i2c_master_transmit(dev_handle, query_request, 2, I2C_TIMEOUT_MS);
-        if (ret != ESP_OK) {
-            i2c_master_bus_rm_device(dev_handle);
-            ESP_LOGE(TAG, "I2C query write failed: %s", esp_err_to_name(ret));
-            return "I2C query write failed";
-        }
-
-        uint8_t query_buffer[2];
-        ret = i2c_master_receive(dev_handle, query_buffer, 2, I2C_TIMEOUT_MS);
-        i2c_master_bus_rm_device(dev_handle);
-
-        if (ret != ESP_OK) {
-            ESP_LOGE(TAG, "I2C query read failed: %s", esp_err_to_name(ret));
-            return "I2C query read failed";
-        }
-
-        if (available) {
-            *available = query_buffer[0];
-        }
-
-        vTaskDelay(pdMS_TO_TICKS(25));
-        return NULL;
-    }
-
     // Create device configuration for this transmission
     i2c_device_config_t dev_cfg = {
         .dev_addr_length = I2C_ADDR_BIT_LEN_7,
@@ -239,6 +168,12 @@ const char *notecard_platform_i2c_receive(uint16_t device_address, uint8_t *buff
         return esp_err_to_name(ret);
     }
 
+    if (size > 255) {
+        ESP_LOGE(TAG, "Requested size %u exceeds maximum 255", size);
+        i2c_master_bus_rm_device(dev_handle);
+        return "size too large";
+    }
+
     // Send read request [0, requested_size]
     uint8_t read_request[2] = {0, (uint8_t)(size & 0xFF)};
     ret = i2c_master_transmit(dev_handle, read_request, 2, I2C_TIMEOUT_MS);
@@ -248,15 +183,8 @@ const char *notecard_platform_i2c_receive(uint16_t device_address, uint8_t *buff
         return "I2C read request failed";
     }
 
-    // Read response [available_bytes, good_bytes, data...]
     uint16_t response_size = size + 2;  // 2-byte header + requested data
-    uint8_t receive_buffer[256];
-
-    if (response_size > sizeof(receive_buffer)) {
-        ESP_LOGE(TAG, "Response size %u exceeds buffer size", response_size);
-        i2c_master_bus_rm_device(dev_handle);
-        return "read buffer overflow";
-    }
+    uint8_t receive_buffer[response_size];
 
     vTaskDelay(pdMS_TO_TICKS(25));
 

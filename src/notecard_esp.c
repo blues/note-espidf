@@ -7,12 +7,10 @@
 
 static const char *TAG = "notecard_esp";
 
-// Global state
 static bool g_initialized = false;
 static notecard_config_t g_config;
 static bool g_trace_enabled = false;
 
-// Forward declarations
 static size_t notecard_trace_output(const char *message);
 #ifndef NOTE_C_LOW_MEM
 static void notecard_user_agent_register(void);
@@ -44,7 +42,6 @@ esp_err_t notecard_init(const notecard_config_t *config)
             return ret;
         }
 
-        // Configure note-c for I2C
         NoteSetFnI2C(config->i2c.address, NOTE_I2C_MAX_DEFAULT,
                      notecard_platform_i2c_reset,
                      notecard_platform_i2c_transmit,
@@ -57,7 +54,6 @@ esp_err_t notecard_init(const notecard_config_t *config)
             return ret;
         }
 
-        // Configure note-c for UART
         NoteSetFnSerial(notecard_platform_uart_reset,
                        notecard_platform_uart_transmit,
                        notecard_platform_uart_available,
@@ -69,13 +65,13 @@ esp_err_t notecard_init(const notecard_config_t *config)
         return ret;
     }
 
-    // Set up note-c platform functions
+    // Register platform hooks
     NoteSetFnDefault(notecard_platform_malloc,
                     notecard_platform_free,
                     notecard_platform_delay,
                     notecard_platform_millis);
 
-    // Set up debug output
+    // Set up trace output
     if (g_trace_enabled) {
         NoteSetFnDebugOutput(notecard_trace_output);
     }
