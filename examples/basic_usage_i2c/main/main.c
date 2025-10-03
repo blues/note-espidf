@@ -35,16 +35,6 @@ extern esp_err_t notecard_platform_i2c_scan(uint8_t start_addr, uint8_t end_addr
 
 static const char *TAG = "notecard_basic";
 
-#define PRODUCT_UID "com.blues.abucknall:cygnettest"
-
-// This is the unique Product Identifier for your device
-#ifndef PRODUCT_UID
-#define PRODUCT_UID "com.my-company.my-name:my-project" // "com.my-company.my-name:my-project"
-#pragma message "PRODUCT_UID is not defined in this example. Please ensure your Notecard has a product identifier set before running this example or define it in code here. More details at https://dev.blues.io/tools-and-sdks/samples/product-uid"
-#endif
-
-#define myProductID PRODUCT_UID
-
 // Task handles
 static TaskHandle_t notecard_task_handle = NULL;
 static bool notecard_initialized = false;
@@ -89,13 +79,8 @@ static esp_err_t notecard_configure_hub(void)
         return ESP_ERR_NO_MEM;
     }
 
-    // Set product ID if defined
-    if (myProductID[0]) {
-        JAddStringToObject(req, "product", myProductID);
-        ESP_LOGI(TAG, "Product ID set: %s", myProductID);
-    } else {
-        ESP_LOGW(TAG, "No Product ID defined - you must set one in Notehub or define PRODUCT_UID");
-    }
+    // Set Notehub product ID
+    JAddStringToObject(req, "product", CONFIG_NOTEHUB_PRODUCT_UID);
 
     // Set connection mode to continuous for this example
     JAddStringToObject(req, "mode", "continuous");

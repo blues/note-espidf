@@ -1,2 +1,3 @@
 # Notecard Configuration for I2C Example
 CONFIG_NOTECARD_ENABLE_LOGGING=y
+CONFIG_NOTEHUB_PRODUCT_UID="com.your-company.your-name:your-project"

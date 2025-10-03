@@ -87,19 +87,14 @@ static esp_err_t notecard_configure_hub(void)
         return ESP_ERR_NO_MEM;
     }
 
-    // Set product ID if defined
-    if (myProductID[0]) {
-        JAddStringToObject(req, "product", myProductID);
-        ESP_LOGI(TAG, "Product ID set: %s", myProductID);
-    } else {
-        ESP_LOGW(TAG, "No Product ID defined - you must set one in Notehub or define PRODUCT_UID");
-    }
+    // Set Notehub product ID
+    JAddStringToObject(req, "product", CONFIG_NOTEHUB_PRODUCT_UID);
 
     // Set connection mode to continuous for this example
     JAddStringToObject(req, "mode", "continuous");
 
     // Set serial number
-    JAddStringToObject(req, "sn", "espidf-uart-basic");
+    JAddStringToObject(req, "sn", "espidf-i2c-basic");
 
     // Send the request with retry
     bool success = NoteRequestWithRetry(req, 5);
@@ -184,7 +179,7 @@ static void notecard_sensor_task(void *pvParameters)
 
 void app_main(void)
 {
-    ESP_LOGI(TAG, "=== ESP-IDF Notecard UART Usage Example ===");
+    ESP_LOGI(TAG, "=== ESP-IDF Notecard Basic Usage UART Example ===");
     ESP_LOGI(TAG, "Component version: %s", NOTECARD_ESP_VERSION);
 
     // Print system information
