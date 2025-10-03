@@ -1,4 +1,4 @@
-#include "notecard_esp.h"
+#include "notecard.h"
 #include "notecard_platform.h"
 #include "esp_log.h"
 #include "esp_system.h"
@@ -9,9 +9,9 @@ static const char *TAG = "notecard_esp";
 
 static bool g_initialized = false;
 static notecard_config_t g_config;
-static bool g_trace_enabled = false;
+static bool g_logging_enabled = false;
 
-static size_t notecard_trace_output(const char *message);
+static size_t notecard_logging_output(const char *message);
 #ifndef NOTE_C_LOW_MEM
 static void notecard_user_agent_register(void);
 #endif
@@ -30,7 +30,7 @@ esp_err_t notecard_init(const notecard_config_t *config)
 
     // Copy configuration
     memcpy(&g_config, config, sizeof(notecard_config_t));
-    g_trace_enabled = config->enable_trace;
+    g_logging_enabled = config->enable_logging;
 
     esp_err_t ret = ESP_OK;
 
@@ -71,9 +71,9 @@ esp_err_t notecard_init(const notecard_config_t *config)
                     notecard_platform_delay,
                     notecard_platform_millis);
 
-    // Set up trace output
-    if (g_trace_enabled) {
-        NoteSetFnDebugOutput(notecard_trace_output);
+    // Set up logging output
+    if (g_logging_enabled) {
+        NoteSetFnDebugOutput(notecard_logging_output);
     }
 
     // Register user agent (only available when not in low memory mode)
@@ -112,27 +112,27 @@ bool notecard_is_initialized(void)
     return g_initialized;
 }
 
-void notecard_set_trace(bool enable)
+void notecard_set_logging(bool enable)
 {
-    g_trace_enabled = enable;
+    g_logging_enabled = enable;
 
     if (g_initialized) {
         if (enable) {
-            NoteSetFnDebugOutput(notecard_trace_output);
+            NoteSetFnDebugOutput(notecard_logging_output);
         } else {
             NoteSetFnDebugOutput(NULL);
         }
     }
 
-    ESP_LOGI(TAG, "Debug trace %s", enable ? "enabled" : "disabled");
+    ESP_LOGI(TAG, "Debug logging %s", enable ? "enabled" : "disabled");
 }
 
 // Private functions
 
-static size_t notecard_trace_output(const char *message)
+static size_t notecard_logging_output(const char *message)
 {
-    if (message && g_trace_enabled) {
-        ESP_LOGI("notecard_trace", "%s", message);
+    if (message && g_logging_enabled) {
+        ESP_LOGI("notecard_logging", "%s", message);
         return strlen(message);
     }
     return 0;

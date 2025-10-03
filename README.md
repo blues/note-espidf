@@ -13,7 +13,7 @@ idf.py add-dependency "blues/note-espidf"
 ### I2C Example
 
 ```c
-#include "notecard_esp.h"
+#include "notecard.h"
 
 void app_main(void) {
     // Initialize with default I2C configuration
@@ -33,7 +33,7 @@ void app_main(void) {
 ### UART Example
 
 ```c
-#include "notecard_esp.h"
+#include "notecard.h"
 
 void app_main(void) {
     // Initialize with default UART configuration

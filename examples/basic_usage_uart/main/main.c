@@ -28,7 +28,7 @@
 #include "esp_chip_info.h"
 #include "esp_timer.h"
 #include "driver/uart.h"
-#include "notecard_esp.h"
+#include "notecard.h"
 
 static const char *TAG = "notecard_uart";
 
@@ -97,6 +97,9 @@ static esp_err_t notecard_configure_hub(void)
 
     // Set connection mode to continuous for this example
     JAddStringToObject(req, "mode", "continuous");
+
+    // Set serial number
+    JAddStringToObject(req, "sn", "espidf-uart-basic");
 
     // Send the request with retry
     bool success = NoteRequestWithRetry(req, 5);

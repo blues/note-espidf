@@ -1,8 +1,8 @@
-#ifndef NOTECARD_ESP_H
-#define NOTECARD_ESP_H
+#ifndef NOTECARD_H
+#define NOTECARD_H
 
 /**
- * @file notecard_esp.h
+ * @file notecard.h
  * @brief ESP-IDF Component for Blues Notecard
  *
  * This component provides ESP-IDF integration for the Blues Notecard,
@@ -75,7 +75,7 @@ typedef struct {
         notecard_i2c_config_t i2c;  /**< I2C configuration */
         notecard_uart_config_t uart; /**< UART configuration */
     };
-    bool enable_trace;              /**< Enable debug tracing */
+    bool enable_logging;              /**< Enable debug logging */
 } notecard_config_t;
 
 /**
@@ -84,10 +84,10 @@ typedef struct {
  * Creates a default I2C configuration using values from Kconfig.
  * Values can be customized via menuconfig under "Notecard Configuration".
  */
-#ifdef CONFIG_NOTECARD_ENABLE_TRACE
-#define NOTECARD_TRACE_DEFAULT true
+#ifdef CONFIG_NOTECARD_LOGGING
+#define NOTECARD_LOGGING_DEFAULT true
 #else
-#define NOTECARD_TRACE_DEFAULT false
+#define NOTECARD_LOGGING_DEFAULT false
 #endif
 
 #ifdef CONFIG_NOTECARD_I2C_PULLUP
@@ -106,7 +106,7 @@ typedef struct {
         .address = CONFIG_NOTECARD_I2C_ADDRESS,            \
         .internal_pullup = NOTECARD_I2C_PULLUP_DEFAULT     \
     },                                                     \
-    .enable_trace = NOTECARD_TRACE_DEFAULT                 \
+    .enable_logging = NOTECARD_LOGGING_DEFAULT                 \
 }
 
 /**
@@ -127,7 +127,7 @@ typedef struct {
         .tx_buffer_size = CONFIG_NOTECARD_UART_TX_BUFFER,  \
         .rx_buffer_size = CONFIG_NOTECARD_UART_RX_BUFFER   \
     },                                                     \
-    .enable_trace = NOTECARD_TRACE_DEFAULT                 \
+    .enable_logging = NOTECARD_LOGGING_DEFAULT                 \
 }
 
 /**
@@ -153,14 +153,14 @@ esp_err_t notecard_deinit(void);
 bool notecard_is_initialized(void);
 
 /**
- * @brief Enable or disable debug trace output
+ * @brief Enable or disable debug logging output
  *
  * @param enable true to enable tracing, false to disable
  */
-void notecard_set_trace(bool enable);
+void notecard_set_logging(bool enable);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif // NOTECARD_ESP_H
+#endif // NOTECARD_H

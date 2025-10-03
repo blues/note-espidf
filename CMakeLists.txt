@@ -26,7 +26,7 @@ set(NOTE_C_SRCS
 
 # Component source files
 set(COMPONENT_SRCS
-    "src/notecard_esp.c"
+    "src/notecard.c"
     "src/notecard_platform.c"
     ${NOTE_C_SRCS}
 )

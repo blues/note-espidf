@@ -28,7 +28,7 @@
 #include "esp_chip_info.h"
 #include "esp_timer.h"
 #include "driver/i2c_master.h"
-#include "notecard_esp.h"
+#include "notecard.h"
 
 // Platform function declaration for I2C scan
 extern esp_err_t notecard_platform_i2c_scan(uint8_t start_addr, uint8_t end_addr, uint8_t *found_devices, uint8_t max_devices, uint8_t *device_count);
@@ -99,6 +99,9 @@ static esp_err_t notecard_configure_hub(void)
 
     // Set connection mode to continuous for this example
     JAddStringToObject(req, "mode", "continuous");
+
+    // Set serial number
+    JAddStringToObject(req, "sn", "espidf-i2c-basic");
 
     // Send the request with retry
     bool success = NoteRequestWithRetry(req, 5);

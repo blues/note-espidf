@@ -8,7 +8,7 @@
  * This file provides platform-specific implementations required by note-c
  */
 
-#include "notecard_esp.h"
+#include "notecard.h"
 #include "esp_err.h"
 #include <stdint.h>
 #include <stdbool.h>

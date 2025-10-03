@@ -2,11 +2,11 @@
 
 menu "Notecard Configuration"
 
-    config NOTECARD_ENABLE_TRACE
-        bool "Enable debug trace output"
+    config NOTECARD_LOGGING
+        bool "Enable debug logging output"
         default n
         help
-            Enable debug trace output from the Notecard component.
+            Enable debug logging output from the Notecard component.
             This will log all communication between the ESP32 and Notecard.
 
     config NOTECARD_LOW_MEMORY
@@ -19,23 +19,13 @@ menu "Notecard Configuration"
             - Debug logging capabilities
             Enable this on memory-constrained devices.
 
-    choice NOTECARD_DEFAULT_INTERFACE
-        prompt "Default communication interface"
-        default NOTECARD_DEFAULT_I2C
+    config NOTEHUB_PRODUCT_UID
+        string "Notehub product UID"
+        default ""
         help
-            Select the default communication interface for the Notecard.
-            This only affects the default configuration macros.
-
-        config NOTECARD_DEFAULT_I2C
-            bool "I2C"
-            help
-                Use I2C as the default interface
-
-        config NOTECARD_DEFAULT_UART
-            bool "UART"
-            help
-                Use UART as the default interface
-    endchoice
+            The Product UID for your Notehub project.
+            Leave empty if you want to set this programmatically.
+            See https://dev.blues.io/notehub/notehub-walkthrough/#finding-a-productuid for more information.
 
     menu "Default I2C Configuration"
 
