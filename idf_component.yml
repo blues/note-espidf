@@ -29,12 +29,7 @@ maintainers:
   - "Support <support@blues.com>"
 
 files:
-  include:
-    - "**/*"
-  exclude:
-    - "examples/**/*"
-    - "test/**/*"
-    - ".git/**/*"
+  use_gitignore: true
 
 examples:
   - path: examples/basic_usage_i2c

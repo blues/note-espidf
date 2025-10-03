@@ -20,4 +20,4 @@ Thumbs.db
 note-c/
 
 # misc
-dist/
+dist/**/*
