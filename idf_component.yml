@@ -1,0 +1,36 @@
+## IDF Component Manager Manifest File
+version: "0.1.0"
+description: ESP-IDF component for Blues Notecard with I2C and UART support
+url: https://github.com/blues/note-espidf
+repository: https://github.com/blues/note-espidf.git
+documentation: https://github.com/blues/note-espidf/blob/main/README.md
+
+dependencies:
+  idf:
+    version: ">=4.4.0"
+
+targets:
+  - esp32
+  - esp32s2
+  - esp32s3
+  - esp32c3
+  - esp32c6
+  - esp32h2
+
+keywords:
+  - blues
+  - notecard
+  - cellular
+  - iot
+
+license: MIT
+
+maintainers:
+  - "Support <support@blues.com>"
+
+files:
+  use_gitignore: true
+
+examples:
+  - path: examples/basic_usage_i2c
+  - path: examples/basic_usage_uart

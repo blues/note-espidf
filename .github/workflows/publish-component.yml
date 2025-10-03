@@ -1,0 +1,23 @@
+name: Publish ESP-IDF Component
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Upload component to ESP Component Registry
+        uses: espressif/upload-components-ci-action@v1
+        with:
+          namespace: blues
+          name: Notecard
+          version: ${{ github.ref_name }}
+          api_token: ${{ secrets.IDF_COMPONENT_API_TOKEN }}
