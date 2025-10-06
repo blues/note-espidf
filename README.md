@@ -18,6 +18,8 @@ idf.py add-dependency "blues/note-espidf"
 void app_main(void) {
     // Initialize with default I2C configuration
     notecard_config_t config = NOTECARD_I2C_CONFIG_DEFAULT();
+    // or with UART
+    // notecard_config_t config = NOTECARD_UART_CONFIG_DEFAULT();
     ESP_ERROR_CHECK(notecard_init(&config));
 
     // Send a request using note-c API
@@ -26,26 +28,6 @@ void app_main(void) {
     JAddStringToObject(req, "mode", "continuous");
     if (!NoteRequest(req)) {
         ESP_LOGE("app", "hub.set failed");
-    }
-}
-```
-
-### UART Example
-
-```c
-#include "notecard.h"
-
-void app_main(void) {
-    // Initialize with default UART configuration
-    notecard_config_t config = NOTECARD_UART_CONFIG_DEFAULT();
-    ESP_ERROR_CHECK(notecard_init(&config));
-
-    // Send a request using note-c API
-    J *req = NoteNewRequest("card.version");
-    J *rsp = NoteRequestResponse(req);
-    if (rsp) {
-        ESP_LOGI("app", "Notecard version: %s", JGetString(rsp, "version"));
-        NoteDeleteResponse(rsp);
     }
 }
 ```
