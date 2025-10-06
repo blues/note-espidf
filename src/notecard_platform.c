@@ -384,18 +384,10 @@ esp_err_t notecard_platform_uart_deinit(void)
 
     g_uart_initialized = false;
 
-    // Clean up mutexes (only if I2C is not also using them)
-    if (!g_i2c_initialized) {
-#ifdef CONFIG_NOTECARD_I2C_MUTEX
-        if (g_i2c_mutex != NULL) {
-            vSemaphoreDelete(g_i2c_mutex);
-            g_i2c_mutex = NULL;
-        }
-#endif
-        if (g_notecard_mutex != NULL) {
-            vSemaphoreDelete(g_notecard_mutex);
-            g_notecard_mutex = NULL;
-        }
+    // Clean up mutexes
+    if (!g_i2c_initialized && g_notecard_mutex != NULL) {
+        vSemaphoreDelete(g_notecard_mutex);
+        g_notecard_mutex = NULL;
     }
 
     ESP_LOGI(TAG, "UART deinitialized");
