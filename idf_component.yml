@@ -1,5 +1,5 @@
 ## IDF Component Manager Manifest File
-version: "0.1.1"
+version: "0.1.2"
 description: ESP-IDF component for Blues Notecard with I2C and UART support
 url: https://github.com/blues/note-espidf
 repository: https://github.com/blues/note-espidf.git
