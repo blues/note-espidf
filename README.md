@@ -5,7 +5,7 @@ An ESP-IDF component for integrating Espressif devices with the Blues [Notecard]
 ## Installation
 
 ```bash
-idf.py add-dependency "blues/note-espidf"
+idf.py add-dependency "blues/notecard"
 ```
 
 ## Usage
