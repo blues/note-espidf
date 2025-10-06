@@ -71,6 +71,8 @@ In order to enable/disable the provided I2C bus mutex, for example to use your o
 Component config  --->  Notecard Configuration  --->  Default I2C Configuration  --->  [ ] Enable I2C mutex
 ```
 
+> Note: The I2C mutex is enabled by default.
+
 ## Examples
 
 For examples, see the [examples](examples) directory.
