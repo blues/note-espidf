@@ -159,6 +159,7 @@ bool notecard_is_initialized(void);
  */
 void notecard_set_logging(bool enable);
 
+#ifdef CONFIG_NOTECARD_I2C_MUTEX
 /**
  * @brief Lock the I2C bus mutex
  *
@@ -185,6 +186,7 @@ void notecard_lock_i2c(void);
  * @note Only available if CONFIG_NOTECARD_I2C_MUTEX is enabled in Kconfig
  */
 void notecard_unlock_i2c(void);
+#endif
 
 #ifdef __cplusplus
 }

@@ -37,7 +37,7 @@ static SemaphoreHandle_t g_notecard_mutex = NULL;
 static void notecard_platform_lock_i2c(void)
 {
     if (g_i2c_mutex != NULL) {
-        xSemaphoreTake(g_i2c_mutex, portMAX_DELAY);
+        for (;xSemaphoreTake(g_i2c_mutex, portMAX_DELAY) != pdTRUE;);
     }
 }
 
@@ -52,7 +52,7 @@ static void notecard_platform_unlock_i2c(void)
 static void notecard_platform_lock_note(void)
 {
     if (g_notecard_mutex != NULL) {
-        xSemaphoreTake(g_notecard_mutex, portMAX_DELAY);
+        for (;xSemaphoreTake(g_notecard_mutex, portMAX_DELAY) != pdTRUE;);
     }
 }
 
@@ -384,8 +384,8 @@ esp_err_t notecard_platform_uart_deinit(void)
 
     g_uart_initialized = false;
 
-    // Clean up mutexes
-    if (!g_i2c_initialized && g_notecard_mutex != NULL) {
+    // Clean up Notecard mutex
+    if (g_notecard_mutex != NULL) {
         vSemaphoreDelete(g_notecard_mutex);
         g_notecard_mutex = NULL;
     }
@@ -503,37 +503,29 @@ void notecard_platform_free(void *ptr)
 void notecard_platform_register_mutex_hooks(void)
 {
     // Register mutex hooks with note-c based on Kconfig settings
-#ifdef CONFIG_NOTECARD_I2C_MUTEX
-    // Both I2C and Notecard mutexes enabled
-    NoteSetFnMutex(notecard_platform_lock_i2c,
-                   notecard_platform_unlock_i2c,
-                   notecard_platform_lock_note,
-                   notecard_platform_unlock_note);
-#else
-    // Only Notecard mutex enabled (I2C mutex is optional)
+    // Enable Notecard mutexes (I2C mutex is optional)
     NoteSetFnNoteMutex(notecard_platform_lock_note,
                        notecard_platform_unlock_note);
+
+#ifdef CONFIG_NOTECARD_I2C_MUTEX
+    // Enable I2C mutexes
+    NoteSetFnI2CMutex(notecard_platform_lock_i2c,
+                   notecard_platform_unlock_i2c);
 #endif
 }
 
 //=============================================================================
-// Public I2C Mutex API for Application Use
+// Public I2C Mutex API
 //=============================================================================
 
+#ifdef CONFIG_NOTECARD_I2C_MUTEX
 void notecard_lock_i2c(void)
 {
-#ifdef CONFIG_NOTECARD_I2C_MUTEX
     notecard_platform_lock_i2c();
-#else
-    ESP_LOGW(TAG, "I2C mutex not enabled in Kconfig");
-#endif
 }
 
 void notecard_unlock_i2c(void)
 {
-#ifdef CONFIG_NOTECARD_I2C_MUTEX
     notecard_platform_unlock_i2c();
-#else
-    ESP_LOGW(TAG, "I2C mutex not enabled in Kconfig");
-#endif
 }
+#endif
