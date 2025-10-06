@@ -159,6 +159,33 @@ bool notecard_is_initialized(void);
  */
 void notecard_set_logging(bool enable);
 
+/**
+ * @brief Lock the I2C bus mutex
+ *
+ * Use this when accessing other I2C peripherals on the same bus to prevent
+ * conflicts with Notecard I2C operations. Always pair with notecard_unlock_i2c().
+ *
+ * @note Only available if CONFIG_NOTECARD_I2C_MUTEX is enabled in Kconfig
+ *
+ * Example:
+ * @code
+ * notecard_lock_i2c();
+ * // Access your I2C sensor here
+ * i2c_master_transmit(my_sensor_handle, data, len, timeout);
+ * notecard_unlock_i2c();
+ * @endcode
+ */
+void notecard_lock_i2c(void);
+
+/**
+ * @brief Unlock the I2C bus mutex
+ *
+ * Must be called after notecard_lock_i2c() to release the I2C bus.
+ *
+ * @note Only available if CONFIG_NOTECARD_I2C_MUTEX is enabled in Kconfig
+ */
+void notecard_unlock_i2c(void);
+
 #ifdef __cplusplus
 }
 #endif

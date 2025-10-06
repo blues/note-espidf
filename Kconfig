@@ -71,6 +71,14 @@ menu "Notecard Configuration"
             help
                 Enable internal pull-up resistors for I2C lines.
                 Disable this if you have external pull-up resistors.
+
+        config NOTECARD_I2C_MUTEX
+            bool "Enable I2C mutex"
+            default y
+            help
+                Enable I2C mutex callback to prevent concurrent access to the I2C bus.
+                Disable if you intend to define your own I2C bus mutex.
+
     endmenu
 
     menu "Default UART Configuration"

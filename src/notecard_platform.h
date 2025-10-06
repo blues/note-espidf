@@ -40,6 +40,13 @@ void notecard_platform_delay(uint32_t ms);
 void *notecard_platform_malloc(size_t size);
 void notecard_platform_free(void *ptr);
 
+// Mutex registration function
+void notecard_platform_register_mutex_hooks(void);
+
+// Public I2C mutex functions
+void notecard_lock_i2c(void);
+void notecard_unlock_i2c(void);
+
 #ifdef __cplusplus
 }
 #endif

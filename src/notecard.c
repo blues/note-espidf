@@ -71,6 +71,9 @@ esp_err_t notecard_init(const notecard_config_t *config)
                     notecard_platform_delay,
                     notecard_platform_millis);
 
+    // Register mutex hooks for thread safety
+    notecard_platform_register_mutex_hooks();
+
     // Set up logging output
     if (g_logging_enabled) {
         NoteSetFnDebugOutput(notecard_logging_output);

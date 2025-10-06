@@ -1,6 +1,7 @@
 # ESP-IDF Notecard Component
 
 An ESP-IDF component for integrating Espressif devices with the Blues [Notecard](https://blues.com/products/notecard/).
+This component provides a thread-safe interface to the Notecard using the [note-c](https://github.com/blues/note-c) library.
 
 ## Installation
 
@@ -42,6 +43,32 @@ The component can be further configured with `menuconfig`.
 ```bash
 idf.py menuconfig
 Component config  --->  Notecard Configuration
+```
+
+## Thread Safety
+
+The component automatically provides thread-safe access to the Notecard in multi-threaded FreeRTOS applications.
+The underlying [note-c](https://github.com/blues/note-c) library protects the Notecard from concurrent access using internal mutexes, so no additional locking is required for normal use.
+
+### I2C Bus Sharing
+
+If you have other I2C peripherals on the same bus as the Notecard, use the I2C mutex API to coordinate access:
+
+```c
+#include "notecard.h"
+
+// Access your I2C peripherals
+notecard_lock_i2c();
+i2c_master_transmit(my_peripheral_handle, data, len, timeout);
+notecard_unlock_i2c();
+```
+
+This ensures the `note-c` won't attempt I2C communication while you're accessing your other peripherals.
+
+In order to enable/disable the provided I2C bus mutex, for example to use your own mutex, use `menuconfig`:
+
+```
+Component config  --->  Notecard Configuration  --->  Default I2C Configuration  --->  [ ] Enable I2C mutex
 ```
 
 ## Examples
