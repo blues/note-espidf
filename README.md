@@ -10,7 +10,10 @@ idf.py add-dependency "blues/note-espidf"
 
 ## Usage
 
-### I2C Example
+The component can be used to communicate with the Notecard using I2C or UART.
+The GPIO pins can either be set within application code or via `menuconfig`.
+
+### Basic Example
 
 ```c
 #include "notecard.h"
@@ -18,6 +21,8 @@ idf.py add-dependency "blues/note-espidf"
 void app_main(void) {
     // Initialize with default I2C configuration
     notecard_config_t config = NOTECARD_I2C_CONFIG_DEFAULT();
+    // or with UART
+    // notecard_config_t config = NOTECARD_UART_CONFIG_DEFAULT();
     ESP_ERROR_CHECK(notecard_init(&config));
 
     // Send a request using note-c API
@@ -30,29 +35,9 @@ void app_main(void) {
 }
 ```
 
-### UART Example
-
-```c
-#include "notecard.h"
-
-void app_main(void) {
-    // Initialize with default UART configuration
-    notecard_config_t config = NOTECARD_UART_CONFIG_DEFAULT();
-    ESP_ERROR_CHECK(notecard_init(&config));
-
-    // Send a request using note-c API
-    J *req = NoteNewRequest("card.version");
-    J *rsp = NoteRequestResponse(req);
-    if (rsp) {
-        ESP_LOGI("app", "Notecard version: %s", JGetString(rsp, "version"));
-        NoteDeleteResponse(rsp);
-    }
-}
-```
-
 ## Configuration
 
-The component can be configured via menuconfig.
+The component can be further configured with `menuconfig`.
 
 ```bash
 idf.py menuconfig
@@ -69,8 +54,8 @@ Examples are designed to run on:
 - [Notecard](https://blues.com/products/notecard/)
 - [Notecarrier F](https://blues.com/products/notecarrier/notecarrier-f/)
 
-If you wish to use a different MCU board, you will need to adjust the GPIO pins used for the Notecard.
-See the Kconfig file for the default GPIO pins.
+If you wish to use a different ESP32 board (or different ESP32 chip), you will need to adjust the GPIO pins used for the Notecard.
+See the [Kconfig](Kconfig) file for the default I2C and UART GPIO pins.
 
 ## Documentation
 
