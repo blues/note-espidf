@@ -67,7 +67,7 @@ notecard_unlock_i2c();
 
 This ensures the `note-c` won't attempt I2C communication while you're accessing your other peripherals.
 
-In order to enable/disable the provided I2C bus mutex, for example to use your own mutex, use `menuconfig`:
+In order to enable/disable the provided I2C bus mutex (e.g. when using your own mutex), use `menuconfig`:
 
 ```
 Component config  --->  Notecard Configuration  --->  Default I2C Configuration  --->  [ ] Enable I2C mutex
