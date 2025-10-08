@@ -60,9 +60,9 @@ If you have other I2C peripherals on the same bus as the Notecard, register your
 #include "notecard.h"
 
 // Access your I2C peripherals
-notecard_lock_i2c();
+notecard_i2c_lock();
 i2c_master_transmit(my_peripheral_handle, data, len, timeout);
-notecard_unlock_i2c();
+notecard_i2c_unlock();
 ```
 
 This ensures the `note-c` won't attempt I2C communication while you're accessing your other peripherals.

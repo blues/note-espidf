@@ -513,12 +513,12 @@ void notecard_platform_register_mutex_hooks(void)
 //=============================================================================
 
 #ifdef CONFIG_NOTECARD_I2C_MUTEX
-void notecard_lock_i2c(void)
+void notecard_i2c_lock(void)
 {
     notecard_platform_lock_i2c();
 }
 
-void notecard_unlock_i2c(void)
+void notecard_i2c_unlock(void)
 {
     notecard_platform_unlock_i2c();
 }
