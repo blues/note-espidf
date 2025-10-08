@@ -3,6 +3,7 @@
 #include "esp_timer.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "freertos/semphr.h"
 #include "driver/i2c_master.h"
 #include "driver/uart.h"
 #include <string.h>
@@ -22,6 +23,46 @@ static bool g_i2c_initialized = false;
 static bool g_uart_initialized = false;
 static i2c_master_bus_handle_t g_i2c_bus_handle = NULL;
 
+// FreeRTOS mutex handles for thread-safe access
+#ifdef CONFIG_NOTECARD_I2C_MUTEX
+static SemaphoreHandle_t g_i2c_mutex = NULL;
+#endif
+static SemaphoreHandle_t g_notecard_mutex = NULL;
+
+//=============================================================================
+// Mutex Platform Implementation
+//=============================================================================
+
+#ifdef CONFIG_NOTECARD_I2C_MUTEX
+static void notecard_platform_i2c_lock(void)
+{
+    if (g_i2c_mutex != NULL) {
+        for (;xSemaphoreTake(g_i2c_mutex, portMAX_DELAY) != pdTRUE;);
+    }
+}
+
+static void notecard_platform_i2c_unlock(void)
+{
+    if (g_i2c_mutex != NULL) {
+        xSemaphoreGive(g_i2c_mutex);
+    }
+}
+#endif
+
+static void notecard_platform_note_lock(void)
+{
+    if (g_notecard_mutex != NULL) {
+        for (;xSemaphoreTake(g_notecard_mutex, portMAX_DELAY) != pdTRUE;);
+    }
+}
+
+static void notecard_platform_note_unlock(void)
+{
+    if (g_notecard_mutex != NULL) {
+        xSemaphoreGive(g_notecard_mutex);
+    }
+}
+
 //=============================================================================
 // I2C Platform Implementation
 //=============================================================================
@@ -36,6 +77,27 @@ esp_err_t notecard_platform_i2c_init(const notecard_i2c_config_t *config)
     if (!config) {
         return ESP_ERR_INVALID_ARG;
     }
+
+    // Create mutexes
+    if (g_notecard_mutex == NULL) {
+        g_notecard_mutex = xSemaphoreCreateMutex();
+        if (g_notecard_mutex == NULL) {
+            ESP_LOGE(TAG, "Failed to create Notecard mutex");
+            return ESP_ERR_NO_MEM;
+        }
+    }
+
+#ifdef CONFIG_NOTECARD_I2C_MUTEX
+    if (g_i2c_mutex == NULL) {
+        g_i2c_mutex = xSemaphoreCreateMutex();
+        if (g_i2c_mutex == NULL) {
+            ESP_LOGE(TAG, "Failed to create I2C mutex");
+            vSemaphoreDelete(g_notecard_mutex);
+            g_notecard_mutex = NULL;
+            return ESP_ERR_NO_MEM;
+        }
+    }
+#endif
 
     // Store configuration
     memcpy(&g_i2c_config, config, sizeof(notecard_i2c_config_t));
@@ -55,6 +117,12 @@ esp_err_t notecard_platform_i2c_init(const notecard_i2c_config_t *config)
     esp_err_t ret = i2c_new_master_bus(&bus_config, &g_i2c_bus_handle);
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "I2C master bus creation failed: %s", esp_err_to_name(ret));
+#ifdef CONFIG_NOTECARD_I2C_MUTEX
+        vSemaphoreDelete(g_i2c_mutex);
+        g_i2c_mutex = NULL;
+#endif
+        vSemaphoreDelete(g_notecard_mutex);
+        g_notecard_mutex = NULL;
         return ret;
     }
 
@@ -79,6 +147,20 @@ esp_err_t notecard_platform_i2c_deinit(void)
 
     g_i2c_bus_handle = NULL;
     g_i2c_initialized = false;
+
+    // Clean up mutexes
+#ifdef CONFIG_NOTECARD_I2C_MUTEX
+    if (g_i2c_mutex != NULL) {
+        vSemaphoreDelete(g_i2c_mutex);
+        g_i2c_mutex = NULL;
+    }
+#endif
+
+    if (g_notecard_mutex != NULL) {
+        vSemaphoreDelete(g_notecard_mutex);
+        g_notecard_mutex = NULL;
+    }
+
     ESP_LOGI(TAG, "I2C deinitialized");
     return ESP_OK;
 }
@@ -228,6 +310,15 @@ esp_err_t notecard_platform_uart_init(const notecard_uart_config_t *config)
         return ESP_ERR_INVALID_ARG;
     }
 
+    // Create Notecard mutex
+    if (g_notecard_mutex == NULL) {
+        g_notecard_mutex = xSemaphoreCreateMutex();
+        if (g_notecard_mutex == NULL) {
+            ESP_LOGE(TAG, "Failed to create Notecard mutex");
+            return ESP_ERR_NO_MEM;
+        }
+    }
+
     memcpy(&g_uart_config, config, sizeof(notecard_uart_config_t));
 
     uart_config_t uart_conf = {
@@ -257,6 +348,8 @@ esp_err_t notecard_platform_uart_init(const notecard_uart_config_t *config)
                              config->tx_buffer_size, 0, NULL, 0);
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "UART driver install failed: %s", esp_err_to_name(ret));
+        vSemaphoreDelete(g_notecard_mutex);
+        g_notecard_mutex = NULL;
         return ret;
     }
 
@@ -280,6 +373,13 @@ esp_err_t notecard_platform_uart_deinit(void)
     }
 
     g_uart_initialized = false;
+
+    // Clean up Notecard mutex
+    if (g_notecard_mutex != NULL) {
+        vSemaphoreDelete(g_notecard_mutex);
+        g_notecard_mutex = NULL;
+    }
+
     ESP_LOGI(TAG, "UART deinitialized");
     return ESP_OK;
 }
@@ -385,3 +485,37 @@ void notecard_platform_free(void *ptr)
 {
     free(ptr);
 }
+
+//=============================================================================
+// Mutex Hook Registration
+//=============================================================================
+
+void notecard_platform_register_mutex_hooks(void)
+{
+    // Register mutex hooks with note-c based on Kconfig settings
+    // Enable Notecard mutexes (I2C mutex is optional)
+    NoteSetFnNoteMutex(notecard_platform_note_lock,
+                       notecard_platform_note_unlock);
+
+#ifdef CONFIG_NOTECARD_I2C_MUTEX
+    // Enable I2C mutexes
+    NoteSetFnI2CMutex(notecard_platform_i2c_lock,
+                   notecard_platform_i2c_unlock);
+#endif
+}
+
+//=============================================================================
+// Public I2C Mutex API
+//=============================================================================
+
+#ifdef CONFIG_NOTECARD_I2C_MUTEX
+void notecard_i2c_lock(void)
+{
+    notecard_platform_i2c_lock();
+}
+
+void notecard_i2c_unlock(void)
+{
+    notecard_platform_i2c_unlock();
+}
+#endif

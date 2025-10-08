@@ -29,8 +29,16 @@ maintainers:
   - "Support <support@blues.com>"
 
 files:
-  use_gitignore: true
-
-examples:
-  - path: examples/basic_usage_i2c
-  - path: examples/basic_usage_uart
+  exclude:
+    - "build/**/*"
+    - "dist/**/*"
+    - ".vscode/**/*"
+    - ".idea/**/*"
+    - "*.swp"
+    - "*.swo"
+    - ".DS_Store"
+    - "Thumbs.db"
+    - "sdkconfig"
+    - "sdkconfig.old"
+    - "CMakeCache.txt"
+    - "CMakeFiles/**/*"
