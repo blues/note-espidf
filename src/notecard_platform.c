@@ -352,10 +352,8 @@ esp_err_t notecard_platform_uart_init(const notecard_uart_config_t *config)
                              config->tx_buffer_size, 0, NULL, 0);
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "UART driver install failed: %s", esp_err_to_name(ret));
-        if (g_notecard_mutex != NULL) {
-            vSemaphoreDelete(g_notecard_mutex);
-            g_notecard_mutex = NULL;
-        }
+        vSemaphoreDelete(g_notecard_mutex);
+        g_notecard_mutex = NULL;
         return ret;
     }
 
