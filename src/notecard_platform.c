@@ -79,29 +79,25 @@ esp_err_t notecard_platform_i2c_init(const notecard_i2c_config_t *config)
     }
 
     // Create mutexes
+    if (g_notecard_mutex == NULL) {
+        g_notecard_mutex = xSemaphoreCreateMutex();
+        if (g_notecard_mutex == NULL) {
+            ESP_LOGE(TAG, "Failed to create Notecard mutex");
+            return ESP_ERR_NO_MEM;
+        }
+    }
+    
 #ifdef CONFIG_NOTECARD_I2C_MUTEX
     if (g_i2c_mutex == NULL) {
         g_i2c_mutex = xSemaphoreCreateMutex();
         if (g_i2c_mutex == NULL) {
             ESP_LOGE(TAG, "Failed to create I2C mutex");
+            vSemaphoreDelete(g_notecard_mutex);
+            g_notecard_mutex = NULL;
             return ESP_ERR_NO_MEM;
         }
     }
 #endif
-
-    if (g_notecard_mutex == NULL) {
-        g_notecard_mutex = xSemaphoreCreateMutex();
-        if (g_notecard_mutex == NULL) {
-            ESP_LOGE(TAG, "Failed to create Notecard mutex");
-#ifdef CONFIG_NOTECARD_I2C_MUTEX
-            if (g_i2c_mutex != NULL) {
-                vSemaphoreDelete(g_i2c_mutex);
-                g_i2c_mutex = NULL;
-            }
-#endif
-            return ESP_ERR_NO_MEM;
-        }
-    }
 
     // Store configuration
     memcpy(&g_i2c_config, config, sizeof(notecard_i2c_config_t));
