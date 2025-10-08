@@ -34,14 +34,14 @@ static SemaphoreHandle_t g_notecard_mutex = NULL;
 //=============================================================================
 
 #ifdef CONFIG_NOTECARD_I2C_MUTEX
-static void notecard_platform_lock_i2c(void)
+static void notecard_platform_i2c_lock(void)
 {
     if (g_i2c_mutex != NULL) {
         for (;xSemaphoreTake(g_i2c_mutex, portMAX_DELAY) != pdTRUE;);
     }
 }
 
-static void notecard_platform_unlock_i2c(void)
+static void notecard_platform_i2c_unlock(void)
 {
     if (g_i2c_mutex != NULL) {
         xSemaphoreGive(g_i2c_mutex);
@@ -49,14 +49,14 @@ static void notecard_platform_unlock_i2c(void)
 }
 #endif
 
-static void notecard_platform_lock_note(void)
+static void notecard_platform_note_lock(void)
 {
     if (g_notecard_mutex != NULL) {
         for (;xSemaphoreTake(g_notecard_mutex, portMAX_DELAY) != pdTRUE;);
     }
 }
 
-static void notecard_platform_unlock_note(void)
+static void notecard_platform_note_unlock(void)
 {
     if (g_notecard_mutex != NULL) {
         xSemaphoreGive(g_notecard_mutex);
@@ -86,7 +86,7 @@ esp_err_t notecard_platform_i2c_init(const notecard_i2c_config_t *config)
             return ESP_ERR_NO_MEM;
         }
     }
-    
+
 #ifdef CONFIG_NOTECARD_I2C_MUTEX
     if (g_i2c_mutex == NULL) {
         g_i2c_mutex = xSemaphoreCreateMutex();
@@ -494,13 +494,13 @@ void notecard_platform_register_mutex_hooks(void)
 {
     // Register mutex hooks with note-c based on Kconfig settings
     // Enable Notecard mutexes (I2C mutex is optional)
-    NoteSetFnNoteMutex(notecard_platform_lock_note,
-                       notecard_platform_unlock_note);
+    NoteSetFnNoteMutex(notecard_platform_note_lock,
+                       notecard_platform_note_unlock);
 
 #ifdef CONFIG_NOTECARD_I2C_MUTEX
     // Enable I2C mutexes
-    NoteSetFnI2CMutex(notecard_platform_lock_i2c,
-                   notecard_platform_unlock_i2c);
+    NoteSetFnI2CMutex(notecard_platform_i2c_lock,
+                   notecard_platform_i2c_unlock);
 #endif
 }
 
@@ -511,11 +511,11 @@ void notecard_platform_register_mutex_hooks(void)
 #ifdef CONFIG_NOTECARD_I2C_MUTEX
 void notecard_i2c_lock(void)
 {
-    notecard_platform_lock_i2c();
+    notecard_platform_i2c_lock();
 }
 
 void notecard_i2c_unlock(void)
 {
-    notecard_platform_unlock_i2c();
+    notecard_platform_i2c_unlock();
 }
 #endif
