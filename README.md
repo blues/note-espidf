@@ -52,7 +52,9 @@ The underlying [note-c](https://github.com/blues/note-c) library protects the No
 
 ### I2C Bus Sharing
 
-If you have other I2C peripherals on the same bus as the Notecard, use the I2C mutex API to coordinate access:
+If you have other I2C peripherals on the same bus as the Notecard, register your I2C mutex with `note-c` using `NoteSetFnI2CMutex()` to minimize the time spent under lock.
+
+ For your convenience, we have provided a default implementation of I2C mutex APIs to coordinate access (example shown below):
 
 ```c
 #include "notecard.h"
