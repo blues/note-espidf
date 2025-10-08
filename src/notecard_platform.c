@@ -125,10 +125,8 @@ esp_err_t notecard_platform_i2c_init(const notecard_i2c_config_t *config)
         vSemaphoreDelete(g_i2c_mutex);
         g_i2c_mutex = NULL;
 #endif
-        if (g_notecard_mutex != NULL) {
-            vSemaphoreDelete(g_notecard_mutex);
-            g_notecard_mutex = NULL;
-        }
+        vSemaphoreDelete(g_notecard_mutex);
+        g_notecard_mutex = NULL;
         return ret;
     }
 
