@@ -15,9 +15,9 @@ jobs:
           submodules: recursive
 
       - name: Upload component to ESP Component Registry
-        uses: espressif/upload-components-ci-action@v1
+        uses: espressif/upload-components-ci-action@v2
         with:
+          components: "notecard: ."
           namespace: blues
-          name: Notecard
           version: ${{ github.ref_name }}
           api_token: ${{ secrets.IDF_COMPONENT_API_TOKEN }}
