@@ -16,10 +16,10 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.x'
+          python-version: '3.11'
 
       - name: Install IDF Component Manager
-        run: pip install idf-component-manager
+        run: pip install 'idf-component-manager==1.5.2'
 
       - name: Validate and Pack Component
         run: compote component pack --name Notecard
