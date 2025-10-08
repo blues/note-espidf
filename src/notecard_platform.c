@@ -122,10 +122,8 @@ esp_err_t notecard_platform_i2c_init(const notecard_i2c_config_t *config)
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "I2C master bus creation failed: %s", esp_err_to_name(ret));
 #ifdef CONFIG_NOTECARD_I2C_MUTEX
-        if (g_i2c_mutex != NULL) {
-            vSemaphoreDelete(g_i2c_mutex);
-            g_i2c_mutex = NULL;
-        }
+        vSemaphoreDelete(g_i2c_mutex);
+        g_i2c_mutex = NULL;
 #endif
         if (g_notecard_mutex != NULL) {
             vSemaphoreDelete(g_notecard_mutex);
