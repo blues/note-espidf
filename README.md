@@ -48,7 +48,10 @@ Component config  --->  Notecard Configuration
 ## Thread Safety
 
 The component automatically provides thread-safe access to the Notecard in multi-threaded FreeRTOS applications.
+This is specific to the ESP-IDF implementation of `malloc` as referenced in their [documentation](https://docs.espressif.com/projects/esp-idf/en/stable/esp32/api-reference/system/mem_alloc.html#thread-safety).
 The underlying [note-c](https://github.com/blues/note-c) library protects the Notecard from concurrent access using internal mutexes, so no additional locking is required for normal use.
+
+> Note: Due to the nature of note-c and how it protects the Notecard from concurrent access, if you application has sensitive timing requirements, your Notecard operations may need to be handled in their own task. Consider using a message queue to offload data to a Notecard send/receive task.
 
 ### I2C Bus Sharing
 
