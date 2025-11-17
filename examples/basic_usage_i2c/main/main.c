@@ -22,7 +22,6 @@
 #include <string.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
-#include "freertos/semphr.h"
 #include "esp_log.h"
 #include "esp_system.h"
 #include "esp_chip_info.h"
@@ -30,15 +29,11 @@
 #include "driver/i2c_master.h"
 #include "notecard.h"
 
-// Platform function declaration for I2C scan
-extern esp_err_t notecard_platform_i2c_scan(uint8_t start_addr, uint8_t end_addr, uint8_t *found_devices, uint8_t max_devices, uint8_t *device_count);
-
 static const char *TAG = "notecard_basic";
 
 // Task handles
 static TaskHandle_t notecard_task_handle = NULL;
 static bool notecard_initialized = false;
-static SemaphoreHandle_t notecard_mutex = NULL;
 
 // Task stack sizes
 #define NOTECARD_TASK_STACK_SIZE    (4 * 1024)
@@ -74,10 +69,6 @@ static esp_err_t notecard_configure_hub(void)
 
     // Create hub.set request
     J *req = NoteNewRequest("hub.set");
-    if (req == NULL) {
-        ESP_LOGE(TAG, "Failed to create hub.set request");
-        return ESP_ERR_NO_MEM;
-    }
 
     // Set Notehub product ID
     JAddStringToObject(req, "product", CONFIG_NOTEHUB_PRODUCT_UID);
@@ -108,54 +99,45 @@ static void notecard_sensor_task(void *pvParameters)
     const TickType_t reading_interval = pdMS_TO_TICKS(15000); // 15 seconds
 
     while (eventCounter < max_readings) {
-        if (xSemaphoreTake(notecard_mutex, portMAX_DELAY) == pdTRUE) {
-            eventCounter++;
+        eventCounter++;
 
-            ESP_LOGI(TAG, "Reading sensors (sample %d/%d)...", eventCounter, max_readings);
+        ESP_LOGI(TAG, "Reading sensors (sample %d/%d)...", eventCounter, max_readings);
 
-            // Read temperature from Notecard's built-in sensor
-            double temperature = 0;
-            J *rsp = NoteRequestResponse(NoteNewRequest("card.temp"));
-            if (rsp != NULL) {
-                temperature = JGetNumber(rsp, "value");
-                NoteDeleteResponse(rsp);
-            } else {
-                ESP_LOGW(TAG, "Failed to read temperature");
-            }
+        // Read temperature from Notecard's built-in sensor
+        double temperature = 0;
+        J *rsp = NoteRequestResponse(NoteNewRequest("card.temp"));
+        if (rsp != NULL) {
+            temperature = JGetNumber(rsp, "value");
+            NoteDeleteResponse(rsp);
+        } else {
+            ESP_LOGW(TAG, "Failed to read temperature");
+        }
 
-            // Read voltage from Notecard's V+ pin
-            double voltage = 0;
-            rsp = NoteRequestResponse(NoteNewRequest("card.voltage"));
-            if (rsp != NULL) {
-                voltage = JGetNumber(rsp, "value");
-                NoteDeleteResponse(rsp);
-            } else {
-                ESP_LOGW(TAG, "Failed to read voltage");
-            }
+        // Read voltage from Notecard's V+ pin
+        double voltage = 0;
+        rsp = NoteRequestResponse(NoteNewRequest("card.voltage"));
+        if (rsp != NULL) {
+            voltage = JGetNumber(rsp, "value");
+            NoteDeleteResponse(rsp);
+        } else {
+            ESP_LOGW(TAG, "Failed to read voltage");
+        }
 
-            // Send data to Notehub
-            J *req = NoteNewRequest("note.add");
-            if (req != NULL) {
-                JAddBoolToObject(req, "sync", true);
-                J *body = JAddObjectToObject(req, "body");
-                if (body != NULL) {
-                    JAddNumberToObject(body, "temp", temperature);
-                    JAddNumberToObject(body, "voltage", voltage);
-                    JAddNumberToObject(body, "count", eventCounter);
-                }
+        // Send data to Notehub
+        J *req = NoteNewRequest("note.add");
+        JAddBoolToObject(req, "sync", true);
 
-                bool success = NoteRequest(req);
-                if (success) {
-                    ESP_LOGI(TAG, "Sample %d sent: temp=%.2f°C, voltage=%.2fV",
-                             eventCounter, temperature, voltage);
-                } else {
-                    ESP_LOGE(TAG, "Failed to send sample %d", eventCounter);
-                }
-            } else {
-                ESP_LOGE(TAG, "Failed to create note request");
-            }
+        J *body = JAddObjectToObject(req, "body");
+        JAddNumberToObject(body, "temp", temperature);
+        JAddNumberToObject(body, "voltage", voltage);
+        JAddNumberToObject(body, "count", eventCounter);
 
-            xSemaphoreGive(notecard_mutex);
+        bool success = NoteRequest(req);
+        if (success) {
+            ESP_LOGI(TAG, "Sample %d sent: temp=%.2f°C, voltage=%.2fV",
+                        eventCounter, temperature, voltage);
+        } else {
+            ESP_LOGE(TAG, "Failed to send sample %d", eventCounter);
         }
 
         // Wait before next reading
@@ -181,27 +163,14 @@ void app_main(void)
              CONFIG_IDF_TARGET, chip_info.revision, chip_info.cores);
     ESP_LOGI(TAG, "Free heap: %u bytes", esp_get_free_heap_size());
 
-    // Create mutex for Notecard access
-    notecard_mutex = xSemaphoreCreateMutex();
-    if (notecard_mutex == NULL) {
-        ESP_LOGE(TAG, "Failed to create Notecard mutex");
-        return;
-    }
-
     // Initialize Notecard hardware and configure for Notehub
-    // Use mutex to protect note-c global state during initialization
-    esp_err_t ret = ESP_FAIL;
-    if (xSemaphoreTake(notecard_mutex, portMAX_DELAY) == pdTRUE) {
-        ret = notecard_hardware_init();
-        if (ret == ESP_OK) {
-            ret = notecard_configure_hub();
-        }
-        xSemaphoreGive(notecard_mutex);
+    esp_err_t ret = notecard_hardware_init();
+    if (ret == ESP_OK) {
+        ret = notecard_configure_hub();
     }
 
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "Notecard initialization failed");
-        vSemaphoreDelete(notecard_mutex);
         return;
     }
 
@@ -238,11 +207,6 @@ void app_main(void)
         ESP_LOGI(TAG, "System status: heap=%u bytes, task running=%s",
                  esp_get_free_heap_size(),
                  (notecard_task_handle != NULL) ? "yes" : "no");
-    }
-
-    // Cleanup
-    if (notecard_mutex) {
-        vSemaphoreDelete(notecard_mutex);
     }
 
     ESP_LOGI(TAG, "Application ended gracefully");
