@@ -209,5 +209,8 @@ void app_main(void)
                  (notecard_task_handle != NULL) ? "yes" : "no");
     }
 
+    // Cleanup - deinitialize Notecard
+    notecard_deinit();
+
     ESP_LOGI(TAG, "Application ended gracefully");
 }
