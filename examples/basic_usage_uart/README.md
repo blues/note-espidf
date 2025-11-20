@@ -5,9 +5,10 @@ This example demonstrates basic Notecard usage with ESP-IDF using UART communica
 - Initialize the Notecard with UART communication
 - Configure Notehub connection
 - Use FreeRTOS tasks for sensor data collection
-- Read built-in sensors from the Notecard (temperature and voltage)
+- Read built-in sensors from the Notecard (temperature)
 - Send sensor data to Notehub using a dedicated task
-- Handle JSON requests and responses with proper thread safety
+- Handle JSON requests and responses
+- Properly deinitialize the Notecard on cleanup
 
 ## Hardware Requirements
 

@@ -113,29 +113,18 @@ static void notecard_sensor_task(void *pvParameters)
             ESP_LOGW(TAG, "Failed to read temperature");
         }
 
-        // Read voltage from Notecard's V+ pin
-        double voltage = 0;
-        rsp = NoteRequestResponse(NoteNewRequest("card.voltage"));
-        if (rsp != NULL) {
-            voltage = JGetNumber(rsp, "value");
-            NoteDeleteResponse(rsp);
-        } else {
-            ESP_LOGW(TAG, "Failed to read voltage");
-        }
-
         // Send data to Notehub
         J *req = NoteNewRequest("note.add");
         JAddBoolToObject(req, "sync", true);
 
         J *body = JAddObjectToObject(req, "body");
         JAddNumberToObject(body, "temp", temperature);
-        JAddNumberToObject(body, "voltage", voltage);
         JAddNumberToObject(body, "count", eventCounter);
 
         bool success = NoteRequest(req);
         if (success) {
-            ESP_LOGI(TAG, "Sample %d sent: temp=%.2f°C, voltage=%.2fV",
-                        eventCounter, temperature, voltage);
+            ESP_LOGI(TAG, "Sample %d sent: temp=%.2f°C",
+                        eventCounter, temperature);
         } else {
             ESP_LOGE(TAG, "Failed to send sample %d", eventCounter);
         }
