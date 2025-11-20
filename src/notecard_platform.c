@@ -22,6 +22,7 @@ static notecard_uart_config_t g_uart_config;
 static bool g_i2c_initialized = false;
 static bool g_uart_initialized = false;
 static i2c_master_bus_handle_t g_i2c_bus_handle = NULL;
+static i2c_master_dev_handle_t g_i2c_dev_handle = NULL;
 
 // FreeRTOS mutex handles for thread-safe access
 #ifdef CONFIG_NOTECARD_I2C_MUTEX
@@ -126,9 +127,30 @@ esp_err_t notecard_platform_i2c_init(const notecard_i2c_config_t *config)
         return ret;
     }
 
+    // Create I2C device configuration once during initialization
+    i2c_device_config_t dev_cfg = {
+        .dev_addr_length = I2C_ADDR_BIT_LEN_7,
+        .device_address = config->address,
+        .scl_speed_hz = config->frequency,
+    };
+
+    ret = i2c_master_bus_add_device(g_i2c_bus_handle, &dev_cfg, &g_i2c_dev_handle);
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to add I2C device: %s", esp_err_to_name(ret));
+        i2c_del_master_bus(g_i2c_bus_handle);
+        g_i2c_bus_handle = NULL;
+#ifdef CONFIG_NOTECARD_I2C_MUTEX
+        vSemaphoreDelete(g_i2c_mutex);
+        g_i2c_mutex = NULL;
+#endif
+        vSemaphoreDelete(g_notecard_mutex);
+        g_notecard_mutex = NULL;
+        return ret;
+    }
+
     g_i2c_initialized = true;
-    ESP_LOGI(TAG, "I2C initialized on port %d (SDA:%d, SCL:%d, %uHz)",
-             config->port, config->sda_pin, config->scl_pin, config->frequency);
+    ESP_LOGI(TAG, "I2C initialized on port %d (SDA:%d, SCL:%d, %uHz, addr:0x%02X)",
+             config->port, config->sda_pin, config->scl_pin, config->frequency, config->address);
 
     return ESP_OK;
 }
@@ -139,6 +161,17 @@ esp_err_t notecard_platform_i2c_deinit(void)
         return ESP_OK;
     }
 
+    // Remove the I2C device first
+    if (g_i2c_dev_handle != NULL) {
+        esp_err_t ret = i2c_master_bus_rm_device(g_i2c_dev_handle);
+        if (ret != ESP_OK) {
+            ESP_LOGE(TAG, "I2C device removal failed: %s", esp_err_to_name(ret));
+            return ret;
+        }
+        g_i2c_dev_handle = NULL;
+    }
+
+    // Then delete the master bus
     esp_err_t ret = i2c_del_master_bus(g_i2c_bus_handle);
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "I2C master bus deletion failed: %s", esp_err_to_name(ret));
@@ -183,7 +216,7 @@ bool notecard_platform_i2c_reset(uint16_t device_address)
 
 const char *notecard_platform_i2c_transmit(uint16_t device_address, uint8_t *buffer, uint16_t size)
 {
-    if (!g_i2c_initialized || !g_i2c_bus_handle) {
+    if (!g_i2c_initialized || !g_i2c_dev_handle) {
         ESP_LOGE(TAG, "I2C not initialized");
         return "i2c not initialized";
     }
@@ -197,27 +230,12 @@ const char *notecard_platform_i2c_transmit(uint16_t device_address, uint8_t *buf
         return "chunk too large";
     }
 
-    // Create device configuration for this transmission
-    i2c_device_config_t dev_cfg = {
-        .dev_addr_length = I2C_ADDR_BIT_LEN_7,
-        .device_address = device_address,
-        .scl_speed_hz = g_i2c_config.frequency,
-    };
-
-    i2c_master_dev_handle_t dev_handle;
-    esp_err_t ret = i2c_master_bus_add_device(g_i2c_bus_handle, &dev_cfg, &dev_handle);
-    if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to add I2C device: %s", esp_err_to_name(ret));
-        return esp_err_to_name(ret);
-    }
-
     // Notecard Serial-over-I2C protocol: prepend size byte to data
     uint8_t send_buffer[size + 1];
     send_buffer[0] = (uint8_t)(size & 0xFF);
     memcpy(&send_buffer[1], buffer, size);
 
-    ret = i2c_master_transmit(dev_handle, send_buffer, size + 1, I2C_TIMEOUT_MS);
-    i2c_master_bus_rm_device(dev_handle);
+    esp_err_t ret = i2c_master_transmit(g_i2c_dev_handle, send_buffer, size + 1, I2C_TIMEOUT_MS);
 
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "I2C transmit failed: %s", esp_err_to_name(ret));
@@ -231,36 +249,20 @@ const char *notecard_platform_i2c_transmit(uint16_t device_address, uint8_t *buf
 const char *notecard_platform_i2c_receive(uint16_t device_address, uint8_t *buffer,
                                          uint16_t size, uint32_t *available)
 {
-    if (!g_i2c_initialized || !g_i2c_bus_handle) {
+    if (!g_i2c_initialized || !g_i2c_dev_handle) {
         ESP_LOGE(TAG, "I2C not initialized for receive");
         return "I2C not initialized";
     }
 
-    // Create device configuration for this transmission
-    i2c_device_config_t dev_cfg = {
-        .dev_addr_length = I2C_ADDR_BIT_LEN_7,
-        .device_address = device_address,
-        .scl_speed_hz = g_i2c_config.frequency,
-    };
-
-    i2c_master_dev_handle_t dev_handle;
-    esp_err_t ret = i2c_master_bus_add_device(g_i2c_bus_handle, &dev_cfg, &dev_handle);
-    if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to add I2C device: %s", esp_err_to_name(ret));
-        return esp_err_to_name(ret);
-    }
-
     if (size > 255) {
         ESP_LOGE(TAG, "Requested size %u exceeds maximum 255", size);
-        i2c_master_bus_rm_device(dev_handle);
         return "size too large";
     }
 
     // Send read request [0, requested_size]
     uint8_t read_request[2] = {0, (uint8_t)(size & 0xFF)};
-    ret = i2c_master_transmit(dev_handle, read_request, 2, I2C_TIMEOUT_MS);
+    esp_err_t ret = i2c_master_transmit(g_i2c_dev_handle, read_request, 2, I2C_TIMEOUT_MS);
     if (ret != ESP_OK) {
-        i2c_master_bus_rm_device(dev_handle);
         ESP_LOGE(TAG, "I2C read request failed: %s", esp_err_to_name(ret));
         return "I2C read request failed";
     }
@@ -270,8 +272,7 @@ const char *notecard_platform_i2c_receive(uint16_t device_address, uint8_t *buff
 
     vTaskDelay(pdMS_TO_TICKS(25));
 
-    ret = i2c_master_receive(dev_handle, receive_buffer, response_size, I2C_TIMEOUT_MS);
-    i2c_master_bus_rm_device(dev_handle);
+    ret = i2c_master_receive(g_i2c_dev_handle, receive_buffer, response_size, I2C_TIMEOUT_MS);
 
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "I2C receive failed: %s", esp_err_to_name(ret));
