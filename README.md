@@ -51,7 +51,7 @@ The component automatically provides thread-safe access to the Notecard in multi
 This is specific to the ESP-IDF implementation of `malloc` as referenced in their [documentation](https://docs.espressif.com/projects/esp-idf/en/stable/esp32/api-reference/system/mem_alloc.html#thread-safety).
 The underlying [note-c](https://github.com/blues/note-c) library protects the Notecard from concurrent access using internal mutexes, so no additional locking is required for normal use.
 
-> Note: Due to the nature of note-c and how it protects the Notecard from concurrent access, if you application has sensitive timing requirements, your Notecard operations may need to be handled in their own task. Consider using a message queue to offload data to a Notecard send/receive task.
+> Note: Due to the nature of the Notecard and the fact that it could be seconds (not milliseconds) to process a request/response, if your application or its sensors have sensitive timing requirements, your timing-sensitive operations should be handled in their own FreeRTOS task(s).
 
 ### I2C Bus Sharing
 
