@@ -90,8 +90,8 @@ static esp_err_t notecard_configure_hub(void)
     // Set serial number
     JAddStringToObject(req, "sn", "espidf-i2c-basic");
 
-    // Send the request with retry
-    bool success = NoteRequestWithRetry(req, 5);
+    // Send the request
+    bool success = NoteRequest(req);
     if (success) {
         ESP_LOGI(TAG, "Notecard configured for Notehub connection");
         return ESP_OK;
