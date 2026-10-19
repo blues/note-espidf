@@ -5,14 +5,27 @@ on:
     tags:
       - 'v*'
 
+permissions:
+  contents: read
+
 jobs:
   publish:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           submodules: recursive
+          persist-credentials: false
+
+      - name: Check tag matches manifest version
+        run: |
+          manifest_version="$(sed -nE 's/^version: "([^"]+)"$/\1/p' idf_component.yml)"
+          if [ "${GITHUB_REF_NAME#v}" != "$manifest_version" ]; then
+            echo "::error::Tag $GITHUB_REF_NAME does not match idf_component.yml version \"$manifest_version\". Bump the manifest version before tagging."
+            exit 1
+          fi
 
       - name: Upload component to ESP Component Registry
         uses: espressif/upload-components-ci-action@v2

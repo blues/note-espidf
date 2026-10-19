@@ -3,24 +3,50 @@ name: Build Examples
 on:
   pull_request:
     types: [opened, synchronize, reopened]
+  push:
+    branches:
+      - main
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.ref || github.sha }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
     strategy:
+      fail-fast: false
       matrix:
         example:
           - basic_usage_i2c
           - basic_usage_uart
+        idf:
+          - v5.5.1
+          - v5.5.6
+        target:
+          - esp32
+          - esp32c3
+        include:
+          - example: basic_usage_i2c
+            idf: v6.1
+            target: esp32
+          - example: basic_usage_uart
+            idf: v6.1
+            target: esp32
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           submodules: recursive
+          persist-credentials: false
 
       - name: ESP-IDF Build
         uses: espressif/esp-idf-ci-action@v1
         with:
-          esp_idf_version: v5.5.1
-          target: esp32
+          esp_idf_version: ${{ matrix.idf }}
+          target: ${{ matrix.target }}
           path: examples/${{ matrix.example }}
