@@ -41,7 +41,7 @@ set(COMPONENT_INCLUDES
 idf_component_register(
     SRCS ${COMPONENT_SRCS}
     INCLUDE_DIRS ${COMPONENT_INCLUDES}
-    REQUIRES driver esp_timer nvs_flash
+    REQUIRES esp_driver_i2c esp_driver_uart esp_timer nvs_flash
     PRIV_REQUIRES esp_system
 )
 
