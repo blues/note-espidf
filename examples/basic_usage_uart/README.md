@@ -16,18 +16,16 @@ This example demonstrates basic Notecard usage with ESP-IDF using UART communica
 - Notecard
 - Notecarrier F
 - Proper UART connections:
-  - TX: GPIO 17 (ESP32 TX to Notecard RX)
-  - RX: GPIO 16 (ESP32 RX to Notecard TX)
+  - TX: GPIO 8 (ESP32 TX to Notecard RX)
+  - RX: GPIO 7 (ESP32 RX to Notecard TX)
   - VCC: 3.3V or 5V (depending on your board)
   - GND: Ground
 
 ## Configuration
 
-1. **Product UID**: Define your Notehub Product UID by either:
-   - Setting it in the Notecard directly via Notehub
-   - Defining `PRODUCT_UID` in the code
+1. **Product UID**: Set `CONFIG_NOTEHUB_PRODUCT_UID` to your Notehub project's ProductUID, either in `sdkconfig.defaults` or with `idf.py menuconfig` under **Component config > Notecard Configuration**.
 
-2. **UART Pins**: The example uses GPIO 17 (TX) and GPIO 16 (RX) by default. These can be changed in the configuration.
+2. **UART Pins**: The example uses GPIO 8 (TX) and GPIO 7 (RX) by default. Change them with `idf.py menuconfig` under **Component config > Notecard Configuration**.
 
 3. **Baudrate**: Uses 9600 baud by default, which is the standard Notecard UART speed.
 
@@ -38,7 +36,7 @@ This example demonstrates basic Notecard usage with ESP-IDF using UART communica
 source ~/esp/v5.5.1/esp-idf/export.sh
 
 # Navigate to the UART example directory
-cd examples/uart_usage
+cd examples/basic_usage_uart
 
 # Build the project
 idf.py build

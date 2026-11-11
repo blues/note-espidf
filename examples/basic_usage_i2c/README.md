@@ -23,11 +23,9 @@ This example demonstrates basic Notecard usage with ESP-IDF in a standard ESP-ID
 
 ## Configuration
 
-1. **Product UID**: Define your Notehub Product UID by either:
-   - Setting it in the Notecard directly via Notehub
-   - Defining `PRODUCT_UID` in the code
+1. **Product UID**: Set `CONFIG_NOTEHUB_PRODUCT_UID` to your Notehub project's ProductUID, either in `sdkconfig.defaults` or with `idf.py menuconfig` under **Component config > Notecard Configuration**.
 
-2. **I2C Pins**: The example uses GPIO 23 (SDA) and GPIO 22 (SCL) by default. These can be changed in the configuration.
+2. **I2C Pins**: The example uses GPIO 22 (SDA) and GPIO 20 (SCL) by default. Change them with `idf.py menuconfig` under **Component config > Notecard Configuration**.
 
 ## Building and Running
 
