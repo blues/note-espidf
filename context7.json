@@ -1,0 +1,24 @@
+{
+  "$schema": "https://context7.com/schema/context7.json",
+  "url": "https://context7.com/blues/note-espidf",
+  "public_key": "pk_nVFOrz6sC1j4Aqx8A32xw",
+  "projectTitle": "note-espidf: ESP-IDF component for Blues Notecard",
+  "description": "ESP-IDF component (blues/notecard) for using a Blues Notecard from ESP32-series chips over I2C or UART. notecard_init() sets up the bus and registers the note-c library's platform hooks with FreeRTOS mutexes, after which applications call the note-c API. Pins, I2C address, baud rate, and logging are configured in menuconfig. Includes I2C and UART examples.",
+  "excludeFolders": [
+    "note-c",
+    ".github"
+  ],
+  "excludeFiles": [
+    "CMakeLists.txt"
+  ],
+  "rules": [
+    "Install with `idf.py add-dependency \"blues/notecard\"` and include \"notecard.h\", which also provides the note-c API (NoteNewRequest(), NoteRequest(), JAddStringToObject()).",
+    "Call notecard_init() with NOTECARD_I2C_CONFIG_DEFAULT() or NOTECARD_UART_CONFIG_DEFAULT() and check for ESP_OK before any request. It registers note-c's hooks; don't call NoteSetFn(), NoteSetFnI2C() or NoteSetFnSerial().",
+    "Set pins, I2C address, UART baud rate and logging in menuconfig under Component config > Notecard Configuration (CONFIG_NOTECARD_* symbols), or change notecard_config_t fields before notecard_init().",
+    "Set the ProductUID with CONFIG_NOTEHUB_PRODUCT_UID (sdkconfig.defaults or menuconfig) and pass it as the \"product\" argument of hub.set.",
+    "NoteRequest() and NoteRequestResponse() free the request; check each response with NoteResponseError() and free it with NoteDeleteResponse().",
+    "If other devices share the Notecard's I2C bus, wrap their transfers in notecard_i2c_lock() and notecard_i2c_unlock() (CONFIG_NOTECARD_I2C_MUTEX, enabled by default).",
+    "Copy Notecard request and argument names exactly from the Notecard API reference; do not invent requests, arguments, or response fields.",
+    "When the Blues Expert MCP server is connected, check generated Notecard JSON requests with its api_validate tool before using them."
+  ]
+}
